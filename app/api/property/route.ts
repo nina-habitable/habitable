@@ -4,6 +4,8 @@ import { supabase } from "../../../lib/supabase";
 export async function GET(request: NextRequest) {
   const bbl = request.nextUrl.searchParams.get("bbl");
 
+  console.log("[/api/property] called with bbl:", bbl);
+
   if (!bbl) {
     return NextResponse.json({ error: "BBL parameter is required" }, { status: 400 });
   }
@@ -50,14 +52,23 @@ export async function GET(request: NextRequest) {
         raw: v,
       }));
 
-      await supabase.from("violations").upsert(rows, { onConflict: "id" });
+      const { error: upsertError } = await supabase
+        .from("violations")
+        .upsert(rows, { onConflict: "id" });
+
+      if (upsertError) {
+        console.error("Supabase violations upsert error:", upsertError);
+      }
     }
 
     // Upsert property
-    await supabase.from("properties").upsert(
-      { bbl, last_fetched: new Date().toISOString() },
-      { onConflict: "bbl" }
-    );
+    const { error: propertyError } = await supabase
+      .from("properties")
+      .upsert({ bbl, last_fetched: new Date().toISOString() }, { onConflict: "bbl" });
+
+    if (propertyError) {
+      console.error("Supabase properties upsert error:", propertyError);
+    }
 
     // Return freshly fetched data mapped to our schema
     const mapped = violations.map((v: Record<string, string>) => ({
