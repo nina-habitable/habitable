@@ -273,7 +273,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [loadingProperty, setLoadingProperty] = useState(false);
   const [error, setError] = useState("");
-  const [showAllViolations, setShowAllViolations] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(10);
   const [timeframe, setTimeframe] = useState<"recent" | "all">("recent");
 
   const hasProfile = !!propertyData;
@@ -406,7 +406,7 @@ export default function Home() {
     setBbl("");
     setAddressLabel("");
     setPropertyData(null);
-    setShowAllViolations(false);
+    setVisibleCount(10);
     setTimeframe("recent");
 
     try {
@@ -435,9 +435,7 @@ export default function Home() {
     }
   }
 
-  const displayedViolations = showAllViolations
-    ? mappedViolations
-    : mappedViolations.slice(0, 10);
+  const displayedViolations = mappedViolations.slice(0, visibleCount);
 
   const timeframeLabel =
     timeframe === "recent" ? `since ${twoYearsAgoLabel}` : "all time";
@@ -627,12 +625,39 @@ export default function Home() {
               </div>
             )}
 
+            {/* Questions to ask your landlord */}
+            {landlordQuestions.length > 0 && (
+              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5">
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+                  Questions to ask before signing
+                </h3>
+                <div className="space-y-3">
+                  {landlordQuestions.map((q, i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] p-3"
+                    >
+                      <p className="text-xs text-[var(--muted)] mb-2">
+                        {q.text}
+                      </p>
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm text-[var(--foreground)] leading-relaxed">
+                          {q.copyText}
+                        </p>
+                        <CopyButton text={q.copyText} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Timeframe toggle */}
             <div className="flex items-center gap-1 bg-[var(--card)] rounded-lg p-1 border border-[var(--card-border)] w-fit">
               <button
                 onClick={() => {
                   setTimeframe("recent");
-                  setShowAllViolations(false);
+                  setVisibleCount(10);
                 }}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                   timeframe === "recent"
@@ -645,7 +670,7 @@ export default function Home() {
               <button
                 onClick={() => {
                   setTimeframe("all");
-                  setShowAllViolations(false);
+                  setVisibleCount(10);
                 }}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                   timeframe === "all"
@@ -728,12 +753,20 @@ export default function Home() {
                     />
                   ))}
                 </div>
-                {mappedViolations.length > 10 && !showAllViolations && (
+                {visibleCount < mappedViolations.length && (
                   <button
-                    onClick={() => setShowAllViolations(true)}
+                    onClick={() => {
+                      if (visibleCount < 20) {
+                        setVisibleCount(20);
+                      } else {
+                        setVisibleCount(mappedViolations.length);
+                      }
+                    }}
                     className="mt-3 w-full rounded-xl border border-[var(--card-border)] bg-[var(--card)] py-2.5 text-sm font-medium text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
                   >
-                    Show all {mappedViolations.length} violations
+                    {visibleCount < 20
+                      ? "Show next 10"
+                      : `Show all ${mappedViolations.length - visibleCount} remaining`}
                   </button>
                 )}
               </div>
@@ -747,33 +780,6 @@ export default function Home() {
                     ? "No violations in the last 2 years. Try \"All time\" to see older records."
                     : "This building has no unresolved HPD violations on record."}
                 </p>
-              </div>
-            )}
-
-            {/* Questions to ask your landlord */}
-            {landlordQuestions.length > 0 && (
-              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5">
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
-                  Questions to ask before signing
-                </h3>
-                <div className="space-y-3">
-                  {landlordQuestions.map((q, i) => (
-                    <div
-                      key={i}
-                      className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] p-3"
-                    >
-                      <p className="text-xs text-[var(--muted)] mb-2">
-                        {q.text}
-                      </p>
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="text-sm text-[var(--foreground)] leading-relaxed">
-                          {q.copyText}
-                        </p>
-                        <CopyButton text={q.copyText} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
 

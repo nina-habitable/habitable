@@ -470,29 +470,29 @@ export function mapViolation(novdescription: string): MappedViolation {
 export const CLASS_INFO = {
   "A": {
     label: "Non-hazardous",
-    color: "#EF9F27",     // amber
-    bgColor: "#FAEEDA",
+    color: "#D4A843",
+    bgColor: "#2E2810",
     deadline: "90 days to correct",
     description: "Not immediately dangerous, but still a code violation.",
   },
   "B": {
     label: "Hazardous",
-    color: "#D85A30",     // coral/orange
-    bgColor: "#FAECE7",
+    color: "#FFB020",
+    bgColor: "#3D2E0A",
     deadline: "30 days to correct",
     description: "Hazardous to health or safety. Must be fixed within 30 days.",
   },
   "C": {
     label: "Immediately hazardous",
-    color: "#E24B4A",     // red
-    bgColor: "#FCEBEB",
+    color: "#FF4D4D",
+    bgColor: "#3D1414",
     deadline: "24 hours to correct",
     description: "Immediately dangerous. The landlord has 24 hours to fix this.",
   },
   "I": {
     label: "Order / information",
-    color: "#888780",     // gray
-    bgColor: "#F1EFE8",
+    color: "#9CA3AF",
+    bgColor: "#1F2937",
     deadline: "Varies",
     description: "An administrative order or informational notice from HPD.",
   },
