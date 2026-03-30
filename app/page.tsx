@@ -220,7 +220,8 @@ export default function Home() {
             <div className="flex gap-3">
               <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Complaints filed (last 2 years):{" "}
+                  Tenant complaints since{" "}
+                  {new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", { month: "long", year: "numeric" })}:{" "}
                   <span className="font-semibold text-gray-900 dark:text-white">
                     {propertyData.complaint_count}
                   </span>
