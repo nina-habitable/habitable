@@ -15,7 +15,7 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "Habitable",
-  description: "Search NYC properties by address",
+  description: "Look up any NYC address to see HPD violations, complaints, and building safety data — in plain English.",
 };
 
 export default function RootLayout({
