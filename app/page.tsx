@@ -105,7 +105,6 @@ function ViolationCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-base">{mapped.icon}</span>
             <h3 className="font-semibold text-[#1A1A18] text-sm leading-snug">
               {mapped.title}
             </h3>
