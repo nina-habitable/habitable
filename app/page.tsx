@@ -151,10 +151,10 @@ export default function Home() {
 
         {propertyData && (
           <div className="mt-6 space-y-4">
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-5 gap-3">
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center dark:border-gray-700 dark:bg-gray-900">
                 <p className="text-2xl font-bold">{propertyData.violations.length}</p>
-                <p className="text-xs text-gray-500 mt-1">Open Violations</p>
+                <p className="text-xs text-gray-500 mt-1">All Open</p>
               </div>
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center dark:border-gray-700 dark:bg-gray-900">
                 <p className="text-2xl font-bold">{classCount("A")}</p>
@@ -167,6 +167,10 @@ export default function Home() {
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center dark:border-gray-700 dark:bg-gray-900">
                 <p className="text-2xl font-bold">{classCount("C")}</p>
                 <p className="text-xs text-gray-500 mt-1">Class C</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center dark:border-gray-700 dark:bg-gray-900">
+                <p className="text-2xl font-bold">{classCount("I")}</p>
+                <p className="text-xs text-gray-500 mt-1">Class I</p>
               </div>
             </div>
 
