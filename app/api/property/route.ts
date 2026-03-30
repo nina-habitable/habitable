@@ -39,10 +39,14 @@ export async function GET(request: NextRequest) {
         supabase.from("litigations").select("*").eq("bbl", bbl),
       ]);
 
+      const cachedComplaintsList = cachedComplaints.data ?? [];
+      const cachedUniqueComplaints = new Set(cachedComplaintsList.map((c: Record<string, string>) => c.complaint_id));
+
       return NextResponse.json({
         violations: cached,
         vacate_orders: cachedVacate.data ?? [],
-        complaints: cachedComplaints.data ?? [],
+        complaints: cachedComplaintsList,
+        complaint_count: cachedUniqueComplaints.size,
         litigations: cachedLitigations.data ?? [],
         cached_at: cached[0].created_at,
         from_cache: true,
@@ -62,6 +66,7 @@ export async function GET(request: NextRequest) {
     ].join(" AND ");
 
     const appToken = process.env.NYC_OPEN_DATA_APP_TOKEN || "";
+    const twoYearsAgo = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
     // Fetch violations, vacate orders, and complaints in parallel
     const [violations, vacateOrders, complaints] = await Promise.all([
@@ -74,10 +79,13 @@ export async function GET(request: NextRequest) {
         "Vacate Orders"
       ),
       safeFetch(
-        `https://data.cityofnewyork.us/resource/ygpa-z7cr.json?bbl=${encodeURIComponent(bbl)}&$limit=500&$$app_token=${appToken}`,
+        `https://data.cityofnewyork.us/resource/ygpa-z7cr.json?bbl=${encodeURIComponent(bbl)}&$limit=500&$$app_token=${appToken}&$where=received_date>'${twoYearsAgo}'`,
         "Complaints"
       ),
     ]);
+
+    const uniqueComplaintIds = new Set(complaints.map((c: Record<string, string>) => c.complaint_id));
+    const complaintCount = uniqueComplaintIds.size;
 
     // Extract building_id from any response that has it
     const buildingId =
@@ -224,6 +232,7 @@ export async function GET(request: NextRequest) {
       violations: mappedViolations,
       vacate_orders: mappedVacate,
       complaints: mappedComplaints,
+      complaint_count: complaintCount,
       litigations: mappedLitigations,
       cached_at: new Date().toISOString(),
       from_cache: false,

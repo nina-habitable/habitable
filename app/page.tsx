@@ -45,6 +45,7 @@ interface PropertyResponse {
   violations: Violation[];
   vacate_orders: VacateOrder[];
   complaints: Complaint[];
+  complaint_count: number;
   litigations: Litigation[];
   cached_at: string;
   from_cache: boolean;
@@ -219,9 +220,9 @@ export default function Home() {
             <div className="flex gap-3">
               <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Complaints filed (all time):{" "}
+                  Complaints filed (last 2 years):{" "}
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    {propertyData.complaints.length}
+                    {propertyData.complaint_count}
                   </span>
                 </p>
               </div>
