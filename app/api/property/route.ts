@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase, supabaseAdmin } from "../../../lib/supabase";
 
+async function safeFetch(url: string, label: string): Promise<Record<string, string>[]> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${label} API returned ${res.status}`);
+    return await res.json();
+  } catch (error) {
+    console.error(`${label} fetch error:`, error);
+    return [];
+  }
+}
+
 export async function GET(request: NextRequest) {
   const bbl = request.nextUrl.searchParams.get("bbl");
 
@@ -21,14 +32,23 @@ export async function GET(request: NextRequest) {
       .gte("created_at", twentyFourHoursAgo);
 
     if (cached && cached.length > 0) {
+      // Also fetch cached data for other tables
+      const [cachedVacate, cachedComplaints, cachedLitigations] = await Promise.all([
+        supabase.from("vacate_orders").select("*").eq("bbl", bbl),
+        supabase.from("complaints").select("*").eq("bbl", bbl),
+        supabase.from("litigations").select("*").eq("bbl", bbl),
+      ]);
+
       return NextResponse.json({
         violations: cached,
+        vacate_orders: cachedVacate.data ?? [],
+        complaints: cachedComplaints.data ?? [],
+        litigations: cachedLitigations.data ?? [],
         cached_at: cached[0].created_at,
         from_cache: true,
       });
     }
 
-    // Fetch from NYC HPD Open Data API
     // Excluded statuses (non-open / resolved / dismissed):
     //   VIOLATION CLOSED, VIOLATION DISMISSED, NOV CERTIFIED LATE,
     //   NOV CERTIFIED ON TIME, INFO NOV SENT OUT, LEAD DOCS SUBMITTED, ACCEPTABLE
@@ -41,28 +61,57 @@ export async function GET(request: NextRequest) {
       "currentstatus!='LEAD DOCS SUBMITTED, ACCEPTABLE'",
     ].join(" AND ");
 
-    const hpdRes = await fetch(
-      `https://data.cityofnewyork.us/resource/wvxf-dwi5.json?bbl=${encodeURIComponent(bbl)}&$limit=2000&$where=${encodeURIComponent(whereClause)}`
-    );
+    const appToken = process.env.NYC_OPEN_DATA_APP_TOKEN || "";
 
-    if (!hpdRes.ok) {
-      throw new Error(`HPD API returned ${hpdRes.status}`);
+    // Fetch violations, vacate orders, and complaints in parallel
+    const [violations, vacateOrders, complaints] = await Promise.all([
+      safeFetch(
+        `https://data.cityofnewyork.us/resource/wvxf-dwi5.json?bbl=${encodeURIComponent(bbl)}&$limit=2000&$where=${encodeURIComponent(whereClause)}`,
+        "HPD Violations"
+      ),
+      safeFetch(
+        `https://data.cityofnewyork.us/resource/tb8q-a3ar.json?bbl=${encodeURIComponent(bbl)}&$limit=10`,
+        "Vacate Orders"
+      ),
+      safeFetch(
+        `https://data.cityofnewyork.us/resource/ygpa-z7cr.json?bbl=${encodeURIComponent(bbl)}&$limit=500&$$app_token=${appToken}`,
+        "Complaints"
+      ),
+    ]);
+
+    // Extract building_id from any response that has it
+    const buildingId =
+      violations[0]?.buildingid ||
+      vacateOrders[0]?.building_id ||
+      complaints[0]?.buildingid ||
+      null;
+
+    // Fetch litigation if we have a building_id
+    let litigations: Record<string, string>[] = [];
+    if (buildingId) {
+      litigations = await safeFetch(
+        `https://data.cityofnewyork.us/resource/59kj-x8nc.json?buildingid=${encodeURIComponent(buildingId)}&$limit=500`,
+        "Litigation"
+      );
     }
 
-    const violations = await hpdRes.json();
-
-    // Upsert property first (violations has a foreign key on bbl)
+    // Upsert property first (foreign key constraint)
     const { error: propertyError } = await supabaseAdmin
       .from("properties")
-      .upsert({ bbl, cached_at: new Date().toISOString() }, { onConflict: "bbl" });
+      .upsert(
+        { bbl, building_id: buildingId, cached_at: new Date().toISOString() },
+        { onConflict: "bbl" }
+      );
 
     if (propertyError) {
       console.error("Supabase properties upsert error:", propertyError);
     }
 
+    // Write all data to Supabase in parallel
+    const writePromises: PromiseLike<unknown>[] = [];
+
     if (violations.length > 0) {
-      // Upsert violations by violationid
-      const rows = violations.map((v: Record<string, string>) => ({
+      const rows = violations.map((v) => ({
         id: v.violationid,
         bbl: v.bbl,
         class: v.class,
@@ -72,18 +121,67 @@ export async function GET(request: NextRequest) {
         currentstatusdate: v.currentstatusdate || null,
         raw: v,
       }));
-
-      const { error: upsertError } = await supabaseAdmin
-        .from("violations")
-        .upsert(rows, { onConflict: "id" });
-
-      if (upsertError) {
-        console.error("Supabase violations upsert error:", upsertError);
-      }
+      writePromises.push(
+        supabaseAdmin.from("violations").upsert(rows, { onConflict: "id" }).then(({ error }) => {
+          if (error) console.error("Supabase violations upsert error:", error);
+        })
+      );
     }
 
+    if (vacateOrders.length > 0) {
+      const rows = vacateOrders.map((v) => ({
+        id: v.vacate_order_number,
+        bbl: v.bbl,
+        vacate_type: v.vacate_type || null,
+        reason: v.primary_vacate_reason || null,
+        effective_date: v.vacate_effective_date || null,
+        units_vacated: v.number_of_vacated_units || null,
+      }));
+      writePromises.push(
+        supabaseAdmin.from("vacate_orders").upsert(rows, { onConflict: "id" }).then(({ error }) => {
+          if (error) console.error("Supabase vacate_orders upsert error:", error);
+        })
+      );
+    }
+
+    if (complaints.length > 0) {
+      const rows = complaints.map((v) => ({
+        id: v.problem_id,
+        bbl: v.bbl,
+        complaint_id: v.complaint_id || null,
+        complaint_status: v.status || null,
+        major_category: v.majorcategory || null,
+        type: v.type || null,
+        received_date: v.receiveddate || null,
+      }));
+      writePromises.push(
+        supabaseAdmin.from("complaints").upsert(rows, { onConflict: "id" }).then(({ error }) => {
+          if (error) console.error("Supabase complaints upsert error:", error);
+        })
+      );
+    }
+
+    if (litigations.length > 0) {
+      const rows = litigations.map((v) => ({
+        id: v.litigationid,
+        bbl: bbl,
+        building_id: v.buildingid || null,
+        casetype: v.casetype || null,
+        casestatus: v.casestatus || null,
+        caseopendate: v.caseopendate || null,
+        respondent: v.respondent || null,
+      }));
+      writePromises.push(
+        supabaseAdmin.from("litigations").upsert(rows, { onConflict: "id" }).then(({ error }) => {
+          if (error) console.error("Supabase litigations upsert error:", error);
+        })
+      );
+    }
+
+    await Promise.all(writePromises);
+
     // Return freshly fetched data mapped to our schema
-    const mapped = violations.map((v: Record<string, string>) => ({
+    const mappedViolations = violations.map((v) => ({
       id: v.violationid,
       bbl: v.bbl,
       class: v.class,
@@ -93,8 +191,40 @@ export async function GET(request: NextRequest) {
       currentstatusdate: v.currentstatusdate || null,
     }));
 
+    const mappedVacate = vacateOrders.map((v) => ({
+      id: v.vacate_order_number,
+      bbl: v.bbl,
+      vacate_type: v.vacate_type || null,
+      reason: v.primary_vacate_reason || null,
+      effective_date: v.vacate_effective_date || null,
+      units_vacated: v.number_of_vacated_units || null,
+    }));
+
+    const mappedComplaints = complaints.map((v) => ({
+      id: v.problem_id,
+      bbl: v.bbl,
+      complaint_id: v.complaint_id || null,
+      complaint_status: v.status || null,
+      major_category: v.majorcategory || null,
+      type: v.type || null,
+      received_date: v.receiveddate || null,
+    }));
+
+    const mappedLitigations = litigations.map((v) => ({
+      id: v.litigationid,
+      bbl: bbl,
+      building_id: v.buildingid || null,
+      casetype: v.casetype || null,
+      casestatus: v.casestatus || null,
+      caseopendate: v.caseopendate || null,
+      respondent: v.respondent || null,
+    }));
+
     return NextResponse.json({
-      violations: mapped,
+      violations: mappedViolations,
+      vacate_orders: mappedVacate,
+      complaints: mappedComplaints,
+      litigations: mappedLitigations,
       cached_at: new Date().toISOString(),
       from_cache: false,
     });

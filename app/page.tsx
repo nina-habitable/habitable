@@ -12,8 +12,40 @@ interface Violation {
   currentstatusdate: string | null;
 }
 
+interface VacateOrder {
+  id: string;
+  bbl: string;
+  vacate_type: string | null;
+  reason: string | null;
+  effective_date: string | null;
+  units_vacated: string | null;
+}
+
+interface Complaint {
+  id: string;
+  bbl: string;
+  complaint_id: string | null;
+  complaint_status: string | null;
+  major_category: string | null;
+  type: string | null;
+  received_date: string | null;
+}
+
+interface Litigation {
+  id: string;
+  bbl: string;
+  building_id: string | null;
+  casetype: string | null;
+  casestatus: string | null;
+  caseopendate: string | null;
+  respondent: string | null;
+}
+
 interface PropertyResponse {
   violations: Violation[];
+  vacate_orders: VacateOrder[];
+  complaints: Complaint[];
+  litigations: Litigation[];
   cached_at: string;
   from_cache: boolean;
 }
@@ -27,15 +59,15 @@ export default function Home() {
   const [loadingViolations, setLoadingViolations] = useState(false);
   const [error, setError] = useState("");
 
-  async function fetchViolations(bblValue: string) {
+  async function fetchPropertyData(bblValue: string) {
     setLoadingViolations(true);
     try {
       const res = await fetch(`/api/property?bbl=${encodeURIComponent(bblValue)}`);
-      if (!res.ok) throw new Error("Failed to fetch violations");
+      if (!res.ok) throw new Error("Failed to fetch property data");
       const data: PropertyResponse = await res.json();
       setPropertyData(data);
     } catch {
-      setError("Failed to load violation data.");
+      setError("Failed to load property data.");
     } finally {
       setLoadingViolations(false);
     }
@@ -76,7 +108,7 @@ export default function Home() {
       setAddressLabel(feature.properties.label);
       setLoading(false);
 
-      await fetchViolations(foundBbl);
+      await fetchPropertyData(foundBbl);
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);
@@ -145,12 +177,22 @@ export default function Home() {
 
         {loadingViolations && (
           <div className="mt-6 text-center text-sm text-gray-500">
-            Loading violations…
+            Loading property data…
           </div>
         )}
 
         {propertyData && (
           <div className="mt-6 space-y-4">
+            {propertyData.vacate_orders.length > 0 && (
+              <div className="rounded-lg border border-red-300 bg-red-100 px-4 py-3 text-sm text-red-800 dark:border-red-700 dark:bg-red-950 dark:text-red-300">
+                <p className="font-semibold">
+                  ⚠️ Active Vacate Order — HPD has declared conditions in this
+                  building uninhabitable. Reason:{" "}
+                  {propertyData.vacate_orders[0].reason ?? "Unknown"}
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-5 gap-3">
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center dark:border-gray-700 dark:bg-gray-900">
                 <p className="text-2xl font-bold">{propertyData.violations.length}</p>
@@ -171,6 +213,25 @@ export default function Home() {
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center dark:border-gray-700 dark:bg-gray-900">
                 <p className="text-2xl font-bold">{classCount("I")}</p>
                 <p className="text-xs text-gray-500 mt-1">Class I</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Complaints filed (all time):{" "}
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {propertyData.complaints.length}
+                  </span>
+                </p>
+              </div>
+              <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  HPD litigation cases:{" "}
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {propertyData.litigations.length}
+                  </span>
+                </p>
               </div>
             </div>
 
