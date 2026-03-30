@@ -190,7 +190,14 @@ export default function Home() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {propertyData.violations.slice(0, 10).map((v) => (
+                  {[...propertyData.violations]
+                    .sort((a, b) => {
+                      const da = a.inspection_date ?? "";
+                      const db = b.inspection_date ?? "";
+                      return db.localeCompare(da);
+                    })
+                    .slice(0, 10)
+                    .map((v) => (
                     <tr key={v.id}>
                       <td className="px-4 py-2 font-medium">{v.class}</td>
                       <td className="px-4 py-2 text-xs text-gray-600 dark:text-gray-400 max-w-xs truncate">
