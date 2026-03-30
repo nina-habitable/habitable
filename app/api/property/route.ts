@@ -157,10 +157,10 @@ export async function GET(request: NextRequest) {
         id: v.problem_id,
         bbl: v.bbl,
         complaint_id: v.complaint_id || null,
-        complaint_status: v.status || null,
-        major_category: v.majorcategory || null,
+        complaint_status: v.complaint_status || null,
+        major_category: v.major_category || null,
         type: v.type || null,
-        received_date: v.receiveddate || null,
+        received_date: v.received_date || null,
       }));
       writePromises.push(
         supabaseAdmin.from("complaints").upsert(rows, { onConflict: "id" }).then(({ error }) => {
@@ -212,10 +212,10 @@ export async function GET(request: NextRequest) {
       id: v.problem_id,
       bbl: v.bbl,
       complaint_id: v.complaint_id || null,
-      complaint_status: v.status || null,
-      major_category: v.majorcategory || null,
+      complaint_status: v.complaint_status || null,
+      major_category: v.major_category || null,
       type: v.type || null,
-      received_date: v.receiveddate || null,
+      received_date: v.received_date || null,
     }));
 
     const mappedLitigations = litigations.map((v) => ({
