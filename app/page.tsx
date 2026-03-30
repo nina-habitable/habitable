@@ -154,7 +154,7 @@ export default function Home() {
             <div className="grid grid-cols-4 gap-3">
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center dark:border-gray-700 dark:bg-gray-900">
                 <p className="text-2xl font-bold">{propertyData.violations.length}</p>
-                <p className="text-xs text-gray-500 mt-1">Total</p>
+                <p className="text-xs text-gray-500 mt-1">Open Violations</p>
               </div>
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center dark:border-gray-700 dark:bg-gray-900">
                 <p className="text-2xl font-bold">{classCount("A")}</p>

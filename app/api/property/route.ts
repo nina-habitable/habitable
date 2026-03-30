@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch from NYC HPD Open Data API
     const hpdRes = await fetch(
-      `https://data.cityofnewyork.us/resource/wvxf-dwi5.json?bbl=${encodeURIComponent(bbl)}&$limit=500`
+      `https://data.cityofnewyork.us/resource/wvxf-dwi5.json?bbl=${encodeURIComponent(bbl)}&$limit=2000&$where=currentstatus!=%27VIOLATION%20CLOSED%27`
     );
 
     if (!hpdRes.ok) {
