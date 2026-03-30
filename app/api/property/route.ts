@@ -45,10 +45,10 @@ export async function GET(request: NextRequest) {
         id: v.violationid,
         bbl: v.bbl,
         class: v.class,
-        inspection_date: v.inspectiondate || null,
-        description: v.novdescription || null,
         status: v.currentstatus || null,
-        status_date: v.currentstatusdate || null,
+        novdescription: v.novdescription || null,
+        inspectiondate: v.inspectiondate || null,
+        currentstatusdate: v.currentstatusdate || null,
         raw: v,
       }));
 
@@ -75,10 +75,10 @@ export async function GET(request: NextRequest) {
       id: v.violationid,
       bbl: v.bbl,
       class: v.class,
-      inspection_date: v.inspectiondate || null,
-      description: v.novdescription || null,
       status: v.currentstatus || null,
-      status_date: v.currentstatusdate || null,
+      novdescription: v.novdescription || null,
+      inspectiondate: v.inspectiondate || null,
+      currentstatusdate: v.currentstatusdate || null,
     }));
 
     return NextResponse.json({

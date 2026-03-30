@@ -6,10 +6,10 @@ interface Violation {
   id: string;
   bbl: string;
   class: string;
-  inspection_date: string | null;
-  description: string | null;
   status: string | null;
-  status_date: string | null;
+  novdescription: string | null;
+  inspectiondate: string | null;
+  currentstatusdate: string | null;
 }
 
 interface PropertyResponse {
@@ -192,8 +192,8 @@ export default function Home() {
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                   {[...propertyData.violations]
                     .sort((a, b) => {
-                      const da = a.inspection_date ?? "";
-                      const db = b.inspection_date ?? "";
+                      const da = a.inspectiondate ?? "";
+                      const db = b.inspectiondate ?? "";
                       return db.localeCompare(da);
                     })
                     .slice(0, 10)
@@ -201,11 +201,11 @@ export default function Home() {
                     <tr key={v.id}>
                       <td className="px-4 py-2 font-medium">{v.class}</td>
                       <td className="px-4 py-2 text-xs text-gray-600 dark:text-gray-400 max-w-xs truncate">
-                        {v.description ?? "—"}
+                        {v.novdescription ?? "—"}
                       </td>
                       <td className="px-4 py-2 text-xs">{v.status ?? "—"}</td>
                       <td className="px-4 py-2 text-xs whitespace-nowrap">
-                        {formatDate(v.inspection_date)}
+                        {formatDate(v.inspectiondate)}
                       </td>
                     </tr>
                   ))}
