@@ -1,10 +1,10 @@
 /**
  * Habitable — Plain-English Violation Mapping Table
- *
+ * 
  * How this works:
  * Every HPD violation has a "novdescription" field with the raw legal text.
  * This table matches keywords in that text and returns a human-readable version.
- *
+ * 
  * The matcher checks patterns in order — first match wins.
  * Each pattern has:
  *   - keywords: array of strings that must ALL appear in the description (case-insensitive)
@@ -12,7 +12,7 @@
  *   - explanation: 1-2 sentence explanation a renter can understand
  *   - icon: emoji for visual scanning (optional, for UI)
  *   - severity: "critical" | "high" | "medium" | "low" — layered on TOP of the class badge
- *
+ * 
  * The class badge (A/B/C/I) comes from the violation data itself, not this table.
  * Severity here is about the CATEGORY of problem, not the legal class.
  */
@@ -387,7 +387,7 @@ export interface MappedViolation {
  */
 export function mapViolation(novdescription: string): MappedViolation {
   const upper = novdescription.toUpperCase();
-
+  
   for (const mapping of VIOLATION_MAPPINGS) {
     const allMatch = mapping.keywords.every(kw => upper.includes(kw));
     if (allMatch) {
@@ -404,8 +404,11 @@ export function mapViolation(novdescription: string): MappedViolation {
   // ═══════════════════════════════════════════
   // FALLBACK: Clean up the raw description
   // ═══════════════════════════════════════════
+  // Strip the legal code prefix (everything before the colon after HMC/ADM CODE/M/D LAW)
+  // and return a cleaned-up version
   let cleaned = novdescription;
-
+  
+  // Remove legal code prefixes like "§ 27-2005 ADM CODE" or "§ 27-2026, 2027 HMC:"
   const colonIndex = cleaned.search(/(?:HMC|ADM CODE|M\/D LAW|MULT\.\s*DWELL\.\s*LAW)[:\s]/i);
   if (colonIndex !== -1) {
     const afterCode = cleaned.substring(colonIndex);
@@ -413,15 +416,18 @@ export function mapViolation(novdescription: string): MappedViolation {
     if (actualColon !== -1) {
       cleaned = afterCode.substring(actualColon + 1).trim();
     } else {
+      // No colon, just skip past the code type
       cleaned = afterCode.replace(/^(HMC|ADM CODE|M\/D LAW|MULT\.\s*DWELL\.\s*LAW)\s*/i, '').trim();
     }
   }
 
+  // Remove apartment/location details for the title (keep first clause only)
   const locationCut = cleaned.search(/\b(IN THE|AT THE|LOCATED AT|AT APT|IN APT|,\s*\d)/i);
-  const shortTitle = locationCut > 10
+  const shortTitle = locationCut > 10 
     ? cleaned.substring(0, locationCut).trim()
     : cleaned.substring(0, 60).trim();
 
+  // Sentence-case the title
   const titleCased = shortTitle.charAt(0).toUpperCase() + shortTitle.slice(1).toLowerCase();
 
   return {
@@ -437,37 +443,31 @@ export function mapViolation(novdescription: string): MappedViolation {
 // CLASS BADGE METADATA
 // ═══════════════════════════════════════════
 
-export const CLASS_INFO: Record<string, {
-  label: string;
-  color: string;
-  bgColor: string;
-  deadline: string;
-  description: string;
-}> = {
+export const CLASS_INFO = {
   "A": {
     label: "Non-hazardous",
-    color: "#633806",
+    color: "#EF9F27",     // amber
     bgColor: "#FAEEDA",
     deadline: "90 days to correct",
     description: "Not immediately dangerous, but still a code violation.",
   },
   "B": {
     label: "Hazardous",
-    color: "#712B13",
+    color: "#D85A30",     // coral/orange
     bgColor: "#FAECE7",
     deadline: "30 days to correct",
     description: "Hazardous to health or safety. Must be fixed within 30 days.",
   },
   "C": {
     label: "Immediately hazardous",
-    color: "#791F1F",
+    color: "#E24B4A",     // red
     bgColor: "#FCEBEB",
     deadline: "24 hours to correct",
     description: "Immediately dangerous. The landlord has 24 hours to fix this.",
   },
   "I": {
     label: "Order / information",
-    color: "#444441",
+    color: "#888780",     // gray
     bgColor: "#F1EFE8",
     deadline: "Varies",
     description: "An administrative order or informational notice from HPD.",
@@ -475,74 +475,149 @@ export const CLASS_INFO: Record<string, {
 };
 
 // ═══════════════════════════════════════════
-// PROPERTY SUMMARY GENERATOR
+// RECENCY HELPERS
+// ═══════════════════════════════════════════
+
+const RECENCY_WINDOW_YEARS = 2;
+
+/**
+ * Split violations into "recent" (last 2 years) and "older" buckets.
+ * Uses inspectiondate field. If no date, treats as older.
+ */
+export function splitByRecency(
+  violations: Array<{ class: string; novdescription: string; inspectiondate?: string }>,
+): { recent: typeof violations; older: typeof violations; cutoffDate: Date } {
+  const now = new Date();
+  const cutoff = new Date(now);
+  cutoff.setFullYear(cutoff.getFullYear() - RECENCY_WINDOW_YEARS);
+
+  const recent: typeof violations = [];
+  const older: typeof violations = [];
+
+  for (const v of violations) {
+    if (v.inspectiondate) {
+      const inspDate = new Date(v.inspectiondate);
+      if (inspDate >= cutoff) {
+        recent.push(v);
+      } else {
+        older.push(v);
+      }
+    } else {
+      // No date — treat as older (benefit of the doubt for the building)
+      older.push(v);
+    }
+  }
+
+  return { recent, older, cutoffDate: cutoff };
+}
+
+// ═══════════════════════════════════════════
+// PROPERTY SUMMARY GENERATOR (recency-aware)
 // ═══════════════════════════════════════════
 
 export interface PropertySummary {
-  headline: string;
-  details: string;
+  headline: string;           // 1 sentence, the key takeaway
+  details: string;            // 2-3 sentences expanding on the headline
+  olderNote: string | null;   // note about older violations, if any exist
   severityLevel: "clean" | "minor" | "moderate" | "serious" | "severe";
+  recentCount: number;        // violations in last 2 years
+  olderCount: number;         // violations older than 2 years
 }
 
 /**
  * Generate a plain-English summary for a property based on its violation data.
+ * 
+ * KEY DESIGN DECISION: Severity is based on RECENT violations (last 2 years),
+ * not the total. A building with 45 violations all from 2001 should read as
+ * "clean recent record" — not "significantly above average."
+ * 
+ * Older violations are noted separately as historical context, not as the headline.
  */
 export function generatePropertySummary(
-  violations: Array<{ class: string; novdescription: string }>,
+  violations: Array<{ class: string; novdescription: string; inspectiondate?: string }>,
   complaintCount: number,
   litigationCount: number,
   hasVacateOrder: boolean,
 ): PropertySummary {
 
-  const total = violations.length;
-  const classC = violations.filter(v => v.class === "C").length;
-  const classB = violations.filter(v => v.class === "B").length;
+  const { recent, older } = splitByRecency(violations);
 
-  const mapped = violations.map(v => mapViolation(v.novdescription));
-  const criticalCount = mapped.filter(m => m.severity === "critical").length;
+  const recentCount = recent.length;
+  const olderCount = older.length;
+  const recentClassC = recent.filter(v => v.class === "C").length;
+  const recentClassB = recent.filter(v => v.class === "B").length;
 
+  // Map recent violations to get category counts
+  const recentMapped = recent.map(v => mapViolation(v.novdescription));
+  const recentCritical = recentMapped.filter(m => m.severity === "critical").length;
+
+  // ═══════════════════════════════════════════
+  // Severity is based on RECENT violations only
+  // (exception: vacate orders override everything)
+  // ═══════════════════════════════════════════
   let severityLevel: PropertySummary["severityLevel"];
-  if (hasVacateOrder || total > 200 || classC > 50) {
+  if (hasVacateOrder) {
     severityLevel = "severe";
-  } else if (total > 50 || classC > 10 || criticalCount > 5) {
+  } else if (recentCount > 100 || recentClassC > 30) {
+    severityLevel = "severe";
+  } else if (recentCount > 30 || recentClassC > 8 || recentCritical > 3) {
     severityLevel = "serious";
-  } else if (total > 10 || classC > 2) {
+  } else if (recentCount > 5 || recentClassC > 1) {
     severityLevel = "moderate";
-  } else if (total > 0) {
+  } else if (recentCount > 0) {
     severityLevel = "minor";
   } else {
     severityLevel = "clean";
   }
 
+  // ═══════════════════════════════════════════
+  // Generate headline + details based on RECENT data
+  // ═══════════════════════════════════════════
   let headline: string;
   let details: string;
 
   if (severityLevel === "clean") {
-    headline = "This building has no open violations with HPD.";
-    details = "No housing code violations are currently on record. This is a positive sign — but violations are only one part of the picture. Consider checking complaint history and talking to current tenants.";
+    headline = "No violations in the last 2 years. This building has a clean recent record.";
+    if (complaintCount > 0) {
+      details = `No recent housing code violations on file.${complaintCount > 0 ? ` There have been ${complaintCount} tenant complaint${complaintCount === 1 ? '' : 's'} recently — complaints don't always lead to violations but are worth noting.` : ''} Overall, this is a positive sign.`;
+    } else {
+      details = "No recent housing code violations or tenant complaints on file. This is a positive sign — but it's always worth talking to current tenants about their experience.";
+    }
   } else if (severityLevel === "minor") {
-    headline = `This building has ${total} open violation${total === 1 ? '' : 's'} — a relatively light record.`;
-    details = classC > 0
-      ? `${classC} of these ${classC === 1 ? 'is' : 'are'} Class C (immediately hazardous). Even a small number of Class C violations is worth asking the landlord about before signing.`
-      : "None are classified as immediately hazardous. This is a relatively clean record, but it's always worth asking the landlord about any open items.";
+    headline = `${recentCount} violation${recentCount === 1 ? '' : 's'} in the last 2 years — a relatively light record.`;
+    details = recentClassC > 0
+      ? `${recentClassC} ${recentClassC === 1 ? 'is' : 'are'} Class C (immediately hazardous). Even a small number of Class C violations is worth asking the landlord about before signing.`
+      : "None of the recent violations are classified as immediately hazardous. This is a relatively clean recent record.";
   } else if (severityLevel === "moderate") {
-    headline = `This building has ${total} open violations — more than average for its type.`;
-    const topIssues = getTopIssueCategories(mapped);
-    details = `The most common issues are ${topIssues}. ${classC} ${classC === 1 ? 'is' : 'are'} Class C (immediately hazardous — landlord had 24 hours to fix). Ask the landlord specifically what's been done about these.`;
+    headline = `${recentCount} violations in the last 2 years.`;
+    const topIssues = getTopIssueCategories(recentMapped);
+    details = `The most common recent issues are ${topIssues}. ${recentClassC} ${recentClassC === 1 ? 'is' : 'are'} Class C (immediately hazardous — landlord had 24 hours to fix).${complaintCount > 0 ? ` Tenants have also filed ${complaintCount} complaint${complaintCount === 1 ? '' : 's'}.` : ''} Ask the landlord specifically what's been done about these.`;
   } else if (severityLevel === "serious") {
-    headline = `This building has ${total} open violations — significantly above average.`;
-    const topIssues = getTopIssueCategories(mapped);
-    details = `${classC} are Class C (immediately hazardous) and ${classB} are Class B (hazardous). The most common issues are ${topIssues}.${litigationCount > 0 ? ` HPD has ${litigationCount} litigation case${litigationCount === 1 ? '' : 's'} against this building.` : ''} Consider this a serious red flag — ask the landlord hard questions and consider alternatives.`;
+    headline = `${recentCount} violations in the last 2 years — a troubled recent record.`;
+    const topIssues = getTopIssueCategories(recentMapped);
+    details = `${recentClassC} are Class C (immediately hazardous) and ${recentClassB} are Class B (hazardous). The most common issues are ${topIssues}.${litigationCount > 0 ? ` HPD has ${litigationCount} litigation case${litigationCount === 1 ? '' : 's'} against this building.` : ''} This is a red flag — ask hard questions and consider alternatives.`;
   } else {
+    // severe
     headline = hasVacateOrder
-      ? `HPD has issued a vacate order for this building. This means conditions are uninhabitable.`
-      : `This building has ${total} open violations — a severely troubled record.`;
-    details = `${classC} are Class C (immediately hazardous) and ${classB} are Class B (hazardous).${complaintCount > 0 ? ` Tenants have filed ${complaintCount} complaints.` : ''}${litigationCount > 0 ? ` HPD has ${litigationCount} active litigation case${litigationCount === 1 ? '' : 's'}.` : ''} This building shows a pattern of serious neglect. Proceed with extreme caution.`;
+      ? "HPD has issued a vacate order for this building. This means conditions were found uninhabitable."
+      : `${recentCount} violations in the last 2 years — a severely troubled record.`;
+    details = `${recentClassC} are Class C (immediately hazardous) and ${recentClassB} are Class B (hazardous).${complaintCount > 0 ? ` Tenants have filed ${complaintCount} complaint${complaintCount === 1 ? '' : 's'}.` : ''}${litigationCount > 0 ? ` HPD has ${litigationCount} active litigation case${litigationCount === 1 ? '' : 's'}.` : ''} This building shows a pattern of serious neglect. Proceed with extreme caution.`;
   }
 
-  return { headline, details, severityLevel };
+  // ═══════════════════════════════════════════
+  // Note about older violations (shown separately, not in headline)
+  // ═══════════════════════════════════════════
+  let olderNote: string | null = null;
+  if (olderCount > 0) {
+    olderNote = `There ${olderCount === 1 ? 'is' : 'are'} also ${olderCount} older open violation${olderCount === 1 ? '' : 's'} on file from prior years. These remain on HPD's records but likely reflect historical conditions rather than the current state of the building.`;
+  }
+
+  return { headline, details, olderNote, severityLevel, recentCount, olderCount };
 }
 
+/**
+ * Get the top 2-3 issue categories from mapped violations for the summary text.
+ */
 function getTopIssueCategories(mapped: MappedViolation[]): string {
   const categoryCounts: Record<string, number> = {};
   for (const m of mapped) {

@@ -77,7 +77,7 @@ const twoYearsAgoLabel = new Date(
 // ─── Components ─────────────────────────────────────
 
 function ClassBadge({ cls }: { cls: string }) {
-  const info = CLASS_INFO[cls];
+  const info = CLASS_INFO[cls as keyof typeof CLASS_INFO];
   if (!info) return <span className="text-xs text-gray-500">Class {cls}</span>;
   return (
     <span
@@ -96,7 +96,7 @@ function ViolationCard({
   violation: Violation;
   mapped: MappedViolation;
 }) {
-  const info = CLASS_INFO[violation.class];
+  const info = CLASS_INFO[violation.class as keyof typeof CLASS_INFO];
   return (
     <div
       className="rounded-xl border bg-white p-4 shadow-sm"
@@ -169,6 +169,7 @@ export default function Home() {
       propertyData.violations.map((v) => ({
         class: v.class,
         novdescription: v.novdescription ?? "",
+        inspectiondate: v.inspectiondate ?? undefined,
       })),
       propertyData.complaint_count,
       propertyData.litigations.length,
@@ -353,6 +354,11 @@ export default function Home() {
                 <p className="text-sm text-[#6B6B66] leading-relaxed">
                   {summary.details}
                 </p>
+                {summary.olderNote && (
+                  <p className="text-xs text-[#9B9B96] leading-relaxed mt-2">
+                    {summary.olderNote}
+                  </p>
+                )}
               </div>
             )}
 
