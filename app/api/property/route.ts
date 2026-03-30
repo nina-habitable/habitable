@@ -91,8 +91,10 @@ export async function GET(request: NextRequest) {
     const buildingId =
       violations[0]?.buildingid ||
       vacateOrders[0]?.building_id ||
-      complaints[0]?.buildingid ||
+      complaints[0]?.building_id ||
       null;
+
+    console.log(`[/api/property] Fetched: ${violations.length} violations, ${vacateOrders.length} vacate orders, ${complaints.length} complaints, buildingId=${buildingId}`);
 
     // Fetch litigation if we have a building_id
     let litigations: Record<string, string>[] = [];
@@ -153,9 +155,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (complaints.length > 0) {
+      console.log(`[/api/property] Writing ${complaints.length} complaints for bbl ${bbl}`);
       const rows = complaints.map((v) => ({
         id: v.problem_id,
-        bbl: v.bbl,
+        bbl: bbl,
         complaint_id: v.complaint_id || null,
         complaint_status: v.complaint_status || null,
         major_category: v.major_category || null,
@@ -210,7 +213,7 @@ export async function GET(request: NextRequest) {
 
     const mappedComplaints = complaints.map((v) => ({
       id: v.problem_id,
-      bbl: v.bbl,
+      bbl: bbl,
       complaint_id: v.complaint_id || null,
       complaint_status: v.complaint_status || null,
       major_category: v.major_category || null,
