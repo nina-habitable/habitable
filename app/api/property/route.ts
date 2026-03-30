@@ -29,8 +29,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch from NYC HPD Open Data API
+    // Excluded statuses (non-open / resolved / dismissed):
+    //   VIOLATION CLOSED, VIOLATION DISMISSED, NOV CERTIFIED LATE,
+    //   NOV CERTIFIED ON TIME, INFO NOV SENT OUT, LEAD DOCS SUBMITTED, ACCEPTABLE
+    const whereClause = [
+      "currentstatus!='VIOLATION CLOSED'",
+      "currentstatus!='VIOLATION DISMISSED'",
+      "currentstatus!='NOV CERTIFIED LATE'",
+      "currentstatus!='NOV CERTIFIED ON TIME'",
+      "currentstatus!='INFO NOV SENT OUT'",
+      "currentstatus!='LEAD DOCS SUBMITTED, ACCEPTABLE'",
+    ].join(" AND ");
+
     const hpdRes = await fetch(
-      `https://data.cityofnewyork.us/resource/wvxf-dwi5.json?bbl=${encodeURIComponent(bbl)}&$limit=2000&$where=currentstatus!=%27VIOLATION%20CLOSED%27`
+      `https://data.cityofnewyork.us/resource/wvxf-dwi5.json?bbl=${encodeURIComponent(bbl)}&$limit=2000&$where=${encodeURIComponent(whereClause)}`
     );
 
     if (!hpdRes.ok) {
