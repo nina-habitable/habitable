@@ -51,6 +51,15 @@ export async function GET(request: NextRequest) {
 
     const violations = await hpdRes.json();
 
+    // Upsert property first (violations has a foreign key on bbl)
+    const { error: propertyError } = await supabaseAdmin
+      .from("properties")
+      .upsert({ bbl, cached_at: new Date().toISOString() }, { onConflict: "bbl" });
+
+    if (propertyError) {
+      console.error("Supabase properties upsert error:", propertyError);
+    }
+
     if (violations.length > 0) {
       // Upsert violations by violationid
       const rows = violations.map((v: Record<string, string>) => ({
@@ -71,15 +80,6 @@ export async function GET(request: NextRequest) {
       if (upsertError) {
         console.error("Supabase violations upsert error:", upsertError);
       }
-    }
-
-    // Upsert property
-    const { error: propertyError } = await supabaseAdmin
-      .from("properties")
-      .upsert({ bbl, cached_at: new Date().toISOString() }, { onConflict: "bbl" });
-
-    if (propertyError) {
-      console.error("Supabase properties upsert error:", propertyError);
     }
 
     // Return freshly fetched data mapped to our schema
