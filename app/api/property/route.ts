@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "../../../lib/supabase";
+import { supabase, supabaseAdmin } from "../../../lib/supabase";
 
 export async function GET(request: NextRequest) {
   const bbl = request.nextUrl.searchParams.get("bbl");
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         raw: v,
       }));
 
-      const { error: upsertError } = await supabase
+      const { error: upsertError } = await supabaseAdmin
         .from("violations")
         .upsert(rows, { onConflict: "id" });
 
@@ -62,9 +62,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Upsert property
-    const { error: propertyError } = await supabase
+    const { error: propertyError } = await supabaseAdmin
       .from("properties")
-      .upsert({ bbl, last_fetched: new Date().toISOString() }, { onConflict: "bbl" });
+      .upsert({ bbl, cached_at: new Date().toISOString() }, { onConflict: "bbl" });
 
     if (propertyError) {
       console.error("Supabase properties upsert error:", propertyError);
