@@ -775,9 +775,13 @@ export default function Home() {
 
             {/* Bed Bug History */}
             {(propertyData.bedbug_reports ?? []).length > 0 && (() => {
-              const reports = [...(propertyData.bedbug_reports ?? [])].sort((a, b) =>
+              const allReports = [...(propertyData.bedbug_reports ?? [])].sort((a, b) =>
                 (b.filing_date ?? "").localeCompare(a.filing_date ?? "")
               );
+              const reports = timeframe === "recent"
+                ? allReports.filter((r) => isRecent(r.filing_date))
+                : allReports;
+              if (reports.length === 0) return null;
               const totalInfested = reports.reduce((sum, r) => sum + (r.infested_unit_count || 0), 0);
               const totalEradicated = reports.reduce((sum, r) => sum + (r.eradicated_unit_count || 0), 0);
               const hasRecentInfestation = reports.some(
