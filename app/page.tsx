@@ -773,51 +773,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Violation cards */}
-            {filteredViolations.length > 0 ? (
-              <div>
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
-                  Open Violations
-                </h3>
-                <div className="space-y-2">
-                  {displayedViolations.map(({ violation, mapped }) => (
-                    <ViolationCard
-                      key={violation.id}
-                      violation={violation}
-                      mapped={mapped}
-                    />
-                  ))}
-                </div>
-                {visibleCount < mappedViolations.length && (
-                  <button
-                    onClick={() => {
-                      if (visibleCount < 20) {
-                        setVisibleCount(20);
-                      } else {
-                        setVisibleCount(mappedViolations.length);
-                      }
-                    }}
-                    className="mt-3 w-full rounded-xl border border-[var(--card-border)] bg-[var(--card)] py-2.5 text-sm font-medium text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
-                  >
-                    {visibleCount < 20
-                      ? "Show next 10"
-                      : `Show all ${mappedViolations.length - visibleCount} remaining`}
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-green-900 bg-green-950 p-5 text-center">
-                <p className="text-sm font-medium text-green-400">
-                  No open violations found
-                </p>
-                <p className="text-xs text-green-500/70 mt-1">
-                  {timeframe === "recent"
-                    ? "No violations in the last 2 years. Try \"All time\" to see older records."
-                    : "This building has no unresolved HPD violations on record."}
-                </p>
-              </div>
-            )}
-
             {/* Bed Bug History */}
             {(propertyData.bedbug_reports ?? []).length > 0 && (() => {
               const reports = [...(propertyData.bedbug_reports ?? [])].sort((a, b) =>
@@ -876,6 +831,51 @@ export default function Home() {
                 </div>
               );
             })()}
+
+            {/* Violation cards */}
+            {filteredViolations.length > 0 ? (
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+                  Open Violations
+                </h3>
+                <div className="space-y-2">
+                  {displayedViolations.map(({ violation, mapped }) => (
+                    <ViolationCard
+                      key={violation.id}
+                      violation={violation}
+                      mapped={mapped}
+                    />
+                  ))}
+                </div>
+                {visibleCount < mappedViolations.length && (
+                  <button
+                    onClick={() => {
+                      if (visibleCount < 20) {
+                        setVisibleCount(20);
+                      } else {
+                        setVisibleCount(mappedViolations.length);
+                      }
+                    }}
+                    className="mt-3 w-full rounded-xl border border-[var(--card-border)] bg-[var(--card)] py-2.5 text-sm font-medium text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+                  >
+                    {visibleCount < 20
+                      ? "Show next 10"
+                      : `Show all ${mappedViolations.length - visibleCount} remaining`}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-green-900 bg-green-950 p-5 text-center">
+                <p className="text-sm font-medium text-green-400">
+                  No open violations found
+                </p>
+                <p className="text-xs text-green-500/70 mt-1">
+                  {timeframe === "recent"
+                    ? "No violations in the last 2 years. Try \"All time\" to see older records."
+                    : "This building has no unresolved HPD violations on record."}
+                </p>
+              </div>
+            )}
 
             {/* Ownership */}
             {propertyData.litigations.length > 0 &&
