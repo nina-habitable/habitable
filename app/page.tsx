@@ -49,12 +49,22 @@ interface Litigation {
   respondent: string | null;
 }
 
+interface BedbugReport {
+  id: string;
+  bbl: string;
+  building_id: string | null;
+  filing_date: string | null;
+  infested_unit_count: number;
+  eradicated_unit_count: number;
+}
+
 interface PropertyResponse {
   violations: Violation[];
   vacate_orders: VacateOrder[];
   complaints: Complaint[];
   complaint_count: number;
   litigations: Litigation[];
+  bedbug_reports: BedbugReport[];
   cached_at: string;
   from_cache: boolean;
 }
@@ -807,6 +817,57 @@ export default function Home() {
                 </p>
               </div>
             )}
+
+            {/* Bed Bug History */}
+            {propertyData.bedbug_reports.length > 0 && (() => {
+              const reports = [...propertyData.bedbug_reports].sort((a, b) =>
+                (b.filing_date ?? "").localeCompare(a.filing_date ?? "")
+              );
+              const totalInfested = reports.reduce((sum, r) => sum + r.infested_unit_count, 0);
+              const hasRecentInfestation = reports.some(
+                (r) => r.infested_unit_count > 0 && isRecent(r.filing_date)
+              );
+              return (
+                <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5">
+                  <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
+                    Bed Bug History
+                  </h3>
+                  {hasRecentInfestation && (
+                    <div className="rounded-lg border border-[#3D2E0A] bg-[#2E2810] px-3 py-2 mb-3">
+                      <p className="text-sm text-[#FFB020]">
+                        Bed bugs have been reported in this building.
+                      </p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <p className="text-lg font-bold text-[var(--foreground)]">
+                        {reports.length}
+                      </p>
+                      <p className="text-[10px] text-[var(--muted-dim)]">
+                        Annual filings
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-[var(--foreground)]">
+                        {formatDate(reports[0].filing_date)}
+                      </p>
+                      <p className="text-[10px] text-[var(--muted-dim)]">
+                        Most recent filing
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-[var(--foreground)]">
+                        {totalInfested}
+                      </p>
+                      <p className="text-[10px] text-[var(--muted-dim)]">
+                        Total infested units reported
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Ownership */}
             {propertyData.litigations.length > 0 &&

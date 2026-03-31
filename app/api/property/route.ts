@@ -33,10 +33,11 @@ export async function GET(request: NextRequest) {
 
     if (cached && cached.length > 0) {
       // Also fetch cached data for other tables
-      const [cachedVacate, cachedComplaints, cachedLitigations] = await Promise.all([
+      const [cachedVacate, cachedComplaints, cachedLitigations, cachedBedbugs] = await Promise.all([
         supabase.from("vacate_orders").select("*").eq("bbl", bbl),
         supabase.from("complaints").select("*").eq("bbl", bbl),
         supabase.from("litigations").select("*").eq("bbl", bbl),
+        supabase.from("bedbug_reports").select("*").eq("bbl", bbl),
       ]);
 
       const cachedComplaintsList = cachedComplaints.data ?? [];
@@ -48,6 +49,7 @@ export async function GET(request: NextRequest) {
         complaints: cachedComplaintsList,
         complaint_count: cachedUniqueComplaints.size,
         litigations: cachedLitigations.data ?? [],
+        bedbug_reports: cachedBedbugs.data ?? [],
         cached_at: cached[0].created_at,
         from_cache: true,
       });
@@ -96,13 +98,20 @@ export async function GET(request: NextRequest) {
 
     console.log(`[/api/property] Fetched: ${violations.length} violations, ${vacateOrders.length} vacate orders, ${complaints.length} complaints, buildingId=${buildingId}`);
 
-    // Fetch litigation if we have a building_id
+    // Fetch litigation and bedbug reports if we have a building_id
     let litigations: Record<string, string>[] = [];
+    let bedbugs: Record<string, string>[] = [];
     if (buildingId) {
-      litigations = await safeFetch(
-        `https://data.cityofnewyork.us/resource/59kj-x8nc.json?buildingid=${encodeURIComponent(buildingId)}&$limit=500`,
-        "Litigation"
-      );
+      [litigations, bedbugs] = await Promise.all([
+        safeFetch(
+          `https://data.cityofnewyork.us/resource/59kj-x8nc.json?buildingid=${encodeURIComponent(buildingId)}&$limit=500`,
+          "Litigation"
+        ),
+        safeFetch(
+          `https://data.cityofnewyork.us/resource/wz6d-d3jb.json?building_id=${encodeURIComponent(buildingId)}&$limit=100`,
+          "Bedbug Reports"
+        ),
+      ]);
     }
 
     // Upsert property first (foreign key constraint)
@@ -189,6 +198,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (bedbugs.length > 0) {
+      const rows = bedbugs.map((v, i) => ({
+        id: `${buildingId}-${v.filing_date || i}`,
+        bbl: bbl,
+        building_id: v.building_id || buildingId,
+        filing_date: v.filing_date || null,
+        infested_unit_count: parseInt(v.infested_dwelling_unit_count) || 0,
+        eradicated_unit_count: parseInt(v.eradicated_unit_count) || 0,
+      }));
+      writePromises.push(
+        supabaseAdmin.from("bedbug_reports").upsert(rows, { onConflict: "id" }).then(({ error }) => {
+          if (error) console.error("Supabase bedbug_reports upsert error:", error);
+        })
+      );
+    }
+
     await Promise.all(writePromises);
 
     // Return freshly fetched data mapped to our schema
@@ -231,12 +256,22 @@ export async function GET(request: NextRequest) {
       respondent: v.respondent || null,
     }));
 
+    const mappedBedbugs = bedbugs.map((v, i) => ({
+      id: `${buildingId}-${v.filing_date || i}`,
+      bbl: bbl,
+      building_id: v.building_id || buildingId,
+      filing_date: v.filing_date || null,
+      infested_unit_count: parseInt(v.infested_dwelling_unit_count) || 0,
+      eradicated_unit_count: parseInt(v.eradicated_unit_count) || 0,
+    }));
+
     return NextResponse.json({
       violations: mappedViolations,
       vacate_orders: mappedVacate,
       complaints: mappedComplaints,
       complaint_count: complaintCount,
       litigations: mappedLitigations,
+      bedbug_reports: mappedBedbugs,
       cached_at: new Date().toISOString(),
       from_cache: false,
     });
