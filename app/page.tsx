@@ -265,6 +265,7 @@ function ViolationCard({
 
 export default function Home() {
   const [address, setAddress] = useState("");
+  const [borough, setBorough] = useState("");
   const [bbl, setBbl] = useState("");
   const [addressLabel, setAddressLabel] = useState("");
   const [propertyData, setPropertyData] = useState<PropertyResponse | null>(
@@ -411,7 +412,7 @@ export default function Home() {
 
     try {
       const res = await fetch(
-        `https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(trimmed)}`
+        `https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(borough ? `${trimmed}, ${borough}, NY` : trimmed)}`
       );
       if (!res.ok) throw new Error("API request failed");
 
@@ -458,9 +459,21 @@ export default function Home() {
               type="text"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Enter a NYC address (e.g. 553 Howard Ave, Brooklyn)"
+              placeholder="Enter a NYC address (e.g. 553 Howard Ave)"
               className="flex-1 rounded-lg border border-[var(--card-border)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-dim)] outline-none focus:border-[var(--muted)] focus:ring-1 focus:ring-[var(--muted)]"
             />
+            <select
+              value={borough}
+              onChange={(e) => setBorough(e.target.value)}
+              className="rounded-lg border border-[var(--card-border)] bg-[var(--card)] px-3 py-3 text-sm text-[var(--foreground)] outline-none focus:border-[var(--muted)] focus:ring-1 focus:ring-[var(--muted)]"
+            >
+              <option value="">Any borough</option>
+              <option value="Manhattan">Manhattan</option>
+              <option value="Brooklyn">Brooklyn</option>
+              <option value="Queens">Queens</option>
+              <option value="Bronx">Bronx</option>
+              <option value="Staten Island">Staten Island</option>
+            </select>
             <button
               type="submit"
               disabled={loading}
@@ -505,6 +518,18 @@ export default function Home() {
               placeholder="Search another address..."
               className="flex-1 rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-4 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-dim)] outline-none focus:border-[var(--muted)] focus:ring-1 focus:ring-[var(--muted)]"
             />
+            <select
+              value={borough}
+              onChange={(e) => setBorough(e.target.value)}
+              className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-2 py-2 text-sm text-[var(--foreground)] outline-none focus:border-[var(--muted)] focus:ring-1 focus:ring-[var(--muted)]"
+            >
+              <option value="">Any</option>
+              <option value="Manhattan">Manhattan</option>
+              <option value="Brooklyn">Brooklyn</option>
+              <option value="Queens">Queens</option>
+              <option value="Bronx">Bronx</option>
+              <option value="Staten Island">Staten Is.</option>
+            </select>
             <button
               type="submit"
               disabled={loading || loadingProperty}
