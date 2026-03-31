@@ -96,7 +96,12 @@ export async function GET(request: NextRequest) {
       complaints[0]?.building_id ||
       null;
 
-    console.log(`[/api/property] Fetched: ${violations.length} violations, ${vacateOrders.length} vacate orders, ${complaints.length} complaints, buildingId=${buildingId}`);
+    console.log(`[/api/property] Fetched: ${violations.length} violations, ${vacateOrders.length} vacate orders, ${complaints.length} complaints, buildingId=${buildingId}`)
+
+    // Log if buildingId is missing — bedbugs and litigation won't be fetched
+    if (!buildingId) {
+      console.warn("[/api/property] No buildingId found — skipping litigation and bedbug fetch");
+    }
 
     // Fetch litigation and bedbug reports if we have a building_id
     let litigations: Record<string, string>[] = [];
@@ -197,6 +202,8 @@ export async function GET(request: NextRequest) {
         })
       );
     }
+
+    console.log(`[/api/property] Fetched: ${litigations.length} litigations, ${bedbugs.length} bedbug reports`);
 
     if (bedbugs.length > 0) {
       const rows = bedbugs.map((v, i) => ({
