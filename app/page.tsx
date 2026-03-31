@@ -40,8 +40,7 @@ export default function Home() {
         return;
       }
 
-      const label = feature.properties.label || "";
-      router.push(`/property/${foundBbl}?address=${encodeURIComponent(label)}`);
+      router.push(`/property/${foundBbl}`);
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);

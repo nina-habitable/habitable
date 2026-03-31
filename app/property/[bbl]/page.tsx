@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   mapViolation,
   generatePropertySummary,
@@ -226,14 +226,11 @@ export default function PropertyPage({
   params: { bbl: string };
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const bbl = params.bbl;
 
   const [address, setAddress] = useState("");
   const [borough, setBorough] = useState("");
-  const [addressLabel] = useState(
-    searchParams.get("address") || ""
-  );
+  const [addressLabel, setAddressLabel] = useState("");
   const [propertyData, setPropertyData] = useState<PropertyResponse | null>(
     null
   );
@@ -248,10 +245,24 @@ export default function PropertyPage({
     async function load() {
       setLoadingProperty(true);
       try {
-        const res = await fetch(`/api/property?bbl=${encodeURIComponent(bbl)}`);
-        if (!res.ok) throw new Error("Failed to fetch property data");
-        const data: PropertyResponse = await res.json();
-        setPropertyData(data);
+        // Fetch property data and resolve address in parallel
+        const [propertyRes, geoRes] = await Promise.all([
+          fetch(`/api/property?bbl=${encodeURIComponent(bbl)}`),
+          fetch(`https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(bbl)}`),
+        ]);
+
+        if (propertyRes.ok) {
+          const data: PropertyResponse = await propertyRes.json();
+          setPropertyData(data);
+        } else {
+          throw new Error("Failed to fetch property data");
+        }
+
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          const label = geoData.features?.[0]?.properties?.label;
+          if (label) setAddressLabel(label);
+        }
       } catch {
         setError("Failed to load property data.");
       } finally {
@@ -292,8 +303,7 @@ export default function PropertyPage({
         return;
       }
 
-      const label = feature.properties.label || "";
-      router.push(`/property/${foundBbl}?address=${encodeURIComponent(label)}`);
+      router.push(`/property/${foundBbl}`);
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);
