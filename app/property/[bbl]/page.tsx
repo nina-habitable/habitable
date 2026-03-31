@@ -2,6 +2,7 @@
 
 import { useState, useEffect, FormEvent, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   mapViolation,
   generatePropertySummary,
@@ -797,6 +798,16 @@ export default function PropertyPage({
                   </p>
                 </div>
               )}
+
+            {/* Compare button */}
+            <div className="text-center">
+              <Link
+                href={`/compare?bbl=${bbl}`}
+                className="inline-block rounded-lg border border-[var(--card-border)] px-4 py-2 text-sm text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--muted)] transition-colors"
+              >
+                + Compare this building
+              </Link>
+            </div>
 
             {/* Data freshness */}
             <div className="text-center text-[10px] text-[var(--muted-dim)] py-2">

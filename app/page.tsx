@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function Home() {
   const router = useRouter();
@@ -89,6 +90,14 @@ export default function Home() {
             {error}
           </div>
         )}
+        <div className="text-center mt-4">
+          <Link
+            href="/compare"
+            className="text-xs text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+          >
+            Compare multiple buildings
+          </Link>
+        </div>
       </div>
     </div>
   );
