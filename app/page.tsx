@@ -375,6 +375,20 @@ export default function Home() {
       .length;
   }, [propertyData, timeframe]);
 
+  // ─── Filtered bedbug reports ───
+  const filteredBedbugs = useMemo(() => {
+    const all = propertyData?.bedbug_reports ?? [];
+    if (all.length === 0) return [];
+    const sorted = [...all].sort((a, b) =>
+      (b.filing_date ?? "").localeCompare(a.filing_date ?? "")
+    );
+    if (timeframe === "all") return sorted;
+    return sorted.filter((r) => {
+      if (!r.filing_date) return false;
+      return new Date(r.filing_date) >= twoYearsAgo;
+    });
+  }, [propertyData, timeframe]);
+
   // ─── Landlord questions ───
   const landlordQuestions = useMemo(
     () => generateQuestions(mappedViolations),
@@ -774,25 +788,18 @@ export default function Home() {
             </div>
 
             {/* Bed Bug History */}
-            {(propertyData.bedbug_reports ?? []).length > 0 && (() => {
-              const allReports = [...(propertyData.bedbug_reports ?? [])].sort((a, b) =>
-                (b.filing_date ?? "").localeCompare(a.filing_date ?? "")
-              );
-              const reports = timeframe === "recent"
-                ? allReports.filter((r) => isRecent(r.filing_date))
-                : allReports;
-              if (reports.length === 0) return null;
-              const totalInfested = reports.reduce((sum, r) => sum + (r.infested_unit_count || 0), 0);
-              const totalEradicated = reports.reduce((sum, r) => sum + (r.eradicated_unit_count || 0), 0);
-              const hasRecentInfestation = reports.some(
-                (r) => r.infested_unit_count > 0 && isRecent(r.filing_date)
+            {filteredBedbugs.length > 0 && (() => {
+              const totalInfested = filteredBedbugs.reduce((sum, r) => sum + (r.infested_unit_count || 0), 0);
+              const totalEradicated = filteredBedbugs.reduce((sum, r) => sum + (r.eradicated_unit_count || 0), 0);
+              const hasActiveInfestation = filteredBedbugs.some(
+                (r) => r.infested_unit_count > 0
               );
               return (
                 <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5">
                   <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">
                     Bed Bug History
                   </h3>
-                  {hasRecentInfestation ? (
+                  {hasActiveInfestation ? (
                     <div className="rounded-lg border border-[#3D2E0A] bg-[#2E2810] px-3 py-2 mb-3">
                       <p className="text-sm text-[#FFB020]">
                         Bed bugs have been reported in this building.
@@ -809,7 +816,7 @@ export default function Home() {
                   <div className="grid grid-cols-3 gap-3">
                     <div>
                       <p className="text-lg font-bold text-[var(--foreground)]">
-                        {reports.length}
+                        {filteredBedbugs.length}
                       </p>
                       <p className="text-[10px] text-[var(--muted-dim)]">
                         Annual filings
@@ -817,7 +824,7 @@ export default function Home() {
                     </div>
                     <div>
                       <p className="text-lg font-bold text-[var(--foreground)]">
-                        {formatDate(reports[0].filing_date)}
+                        {formatDate(filteredBedbugs[0].filing_date)}
                       </p>
                       <p className="text-[10px] text-[var(--muted-dim)]">
                         Most recent filing
