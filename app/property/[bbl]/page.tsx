@@ -479,12 +479,22 @@ export default function PropertyPage({
           <div className="space-y-5">
             {/* Address header */}
             <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                {addressLabel || `Property ${bbl}`}
-              </h2>
-              <p className="text-sm text-[var(--muted-dim)] font-[family-name:var(--font-geist-mono)]">
-                BBL {bbl}
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                    {addressLabel || `Property ${bbl}`}
+                  </h2>
+                  <p className="text-sm text-[var(--muted-dim)] font-[family-name:var(--font-geist-mono)]">
+                    BBL {bbl}
+                  </p>
+                </div>
+                <Link
+                  href={`/compare?bbls=${bbl}`}
+                  className="shrink-0 rounded-lg border border-[var(--card-border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--muted)] transition-colors"
+                >
+                  + Compare
+                </Link>
+              </div>
             </div>
 
             {/* Vacate order banner */}
@@ -798,16 +808,6 @@ export default function PropertyPage({
                   </p>
                 </div>
               )}
-
-            {/* Compare button */}
-            <div className="text-center">
-              <Link
-                href={`/compare?bbl=${bbl}`}
-                className="inline-block rounded-lg border border-[var(--card-border)] px-4 py-2 text-sm text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--muted)] transition-colors"
-              >
-                + Compare this building
-              </Link>
-            </div>
 
             {/* Data freshness */}
             <div className="text-center text-[10px] text-[var(--muted-dim)] py-2">

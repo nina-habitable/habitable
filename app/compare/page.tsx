@@ -281,49 +281,69 @@ function BuildingCard({
 
 function CompareContent() {
   const searchParams = useSearchParams();
-  const initialBbl = searchParams.get("bbl") || "";
+  const initialBbls = searchParams.get("bbls")?.split(",").filter(Boolean) ?? [];
 
   const [buildings, setBuildings] = useState<BuildingData[]>([]);
-  const [loadingInitial, setLoadingInitial] = useState(!!initialBbl);
-  const [showSearch, setShowSearch] = useState(!initialBbl);
+  const [loadingInitial, setLoadingInitial] = useState(initialBbls.length > 0);
 
-  // Load initial building if bbl param present
+  // Update URL when buildings change
+  function updateUrl(buildingList: BuildingData[]) {
+    const bbls = buildingList.map((b) => b.bbl).join(",");
+    const url = bbls ? `/compare?bbls=${bbls}` : "/compare";
+    window.history.replaceState(null, "", url);
+  }
+
+  // Load initial buildings from URL params
   useEffect(() => {
-    if (!initialBbl) return;
+    if (initialBbls.length === 0) return;
 
     async function loadInitial() {
       try {
-        const [propRes, geoRes] = await Promise.all([
-          fetch(`/api/property?bbl=${encodeURIComponent(initialBbl)}`),
-          fetch(`https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(initialBbl)}`),
-        ]);
+        const results: BuildingData[] = [];
+        await Promise.all(
+          initialBbls.slice(0, 3).map(async (bblVal) => {
+            const [propRes, geoRes] = await Promise.all([
+              fetch(`/api/property?bbl=${encodeURIComponent(bblVal)}`),
+              fetch(`https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(bblVal)}`),
+            ]);
 
-        if (!propRes.ok) return;
-        const propData: PropertyResponse = await propRes.json();
+            if (!propRes.ok) return;
+            const propData: PropertyResponse = await propRes.json();
 
-        let label = `Property ${initialBbl}`;
-        if (geoRes.ok) {
-          const geoData = await geoRes.json();
-          const geoLabel = geoData.features?.[0]?.properties?.label;
-          if (geoLabel) label = geoLabel;
-        }
+            let label = `Property ${bblVal}`;
+            if (geoRes.ok) {
+              const geoData = await geoRes.json();
+              const geoLabel = geoData.features?.[0]?.properties?.label;
+              if (geoLabel) label = geoLabel;
+            }
 
-        setBuildings([{ bbl: initialBbl, addressLabel: label, propertyData: propData }]);
-        setShowSearch(true);
+            results.push({ bbl: bblVal, addressLabel: label, propertyData: propData });
+          })
+        );
+        // Maintain the original order from the URL
+        const ordered = initialBbls
+          .map((b) => results.find((r) => r.bbl === b))
+          .filter((r): r is BuildingData => !!r);
+        setBuildings(ordered);
       } finally {
         setLoadingInitial(false);
       }
     }
     loadInitial();
-  }, [initialBbl]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleResult(bbl: string, label: string, data: PropertyResponse) {
-    if (buildings.some((b) => b.bbl === bbl)) return; // prevent duplicates
-    setBuildings((prev) => [...prev, { bbl, addressLabel: label, propertyData: data }]);
+    if (buildings.some((b) => b.bbl === bbl)) return;
+    const updated = [...buildings, { bbl, addressLabel: label, propertyData: data }];
+    setBuildings(updated);
+    updateUrl(updated);
   }
 
   function removeBuilding(bbl: string) {
-    setBuildings((prev) => prev.filter((b) => b.bbl !== bbl));
+    const updated = buildings.filter((b) => b.bbl !== bbl);
+    setBuildings(updated);
+    updateUrl(updated);
   }
 
   return (
@@ -339,7 +359,7 @@ function CompareContent() {
             </Link>
             <span className="text-sm text-[var(--muted-dim)]">/ Compare</span>
           </div>
-          {showSearch && buildings.length < 3 && (
+          {buildings.length < 3 && (
             <BuildingSearch onResult={handleResult} loading={loadingInitial} />
           )}
         </div>
