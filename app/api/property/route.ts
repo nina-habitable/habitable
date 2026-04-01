@@ -32,12 +32,13 @@ export async function GET(request: NextRequest) {
       .gte("created_at", twentyFourHoursAgo);
 
     if (cached && cached.length > 0) {
-      // Also fetch cached data for other tables
-      const [cachedVacate, cachedComplaints, cachedLitigations, cachedBedbugs] = await Promise.all([
+      // Also fetch cached data for other tables + address from properties
+      const [cachedVacate, cachedComplaints, cachedLitigations, cachedBedbugs, cachedProperty] = await Promise.all([
         supabase.from("vacate_orders").select("*").eq("bbl", bbl),
         supabase.from("complaints").select("*").eq("bbl", bbl),
         supabase.from("litigations").select("*").eq("bbl", bbl),
         supabase.from("bedbug_reports").select("*").eq("bbl", bbl),
+        supabase.from("properties").select("address").eq("bbl", bbl).single(),
       ]);
 
       const cachedComplaintsList = cachedComplaints.data ?? [];
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest) {
         complaint_count: cachedUniqueComplaints.size,
         litigations: cachedLitigations.data ?? [],
         bedbug_reports: cachedBedbugs.data ?? [],
+        address_label: cachedProperty.data?.address ?? null,
         cached_at: cached[0].created_at,
         from_cache: true,
       });
@@ -96,6 +98,12 @@ export async function GET(request: NextRequest) {
       complaints[0]?.building_id ||
       null;
 
+    // Build address from HPD data
+    const firstViolation = violations[0];
+    const addressLabel = firstViolation
+      ? `${firstViolation.housenumber} ${firstViolation.streetname}, ${(firstViolation.boro || "").charAt(0).toUpperCase() + (firstViolation.boro || "").slice(1).toLowerCase()}, NY`
+      : null;
+
     console.log(`[/api/property] Fetched: ${violations.length} violations, ${vacateOrders.length} vacate orders, ${complaints.length} complaints, buildingId=${buildingId}`)
 
     // Log if buildingId is missing — bedbugs and litigation won't be fetched
@@ -123,7 +131,7 @@ export async function GET(request: NextRequest) {
     const { error: propertyError } = await supabaseAdmin
       .from("properties")
       .upsert(
-        { bbl, building_id: buildingId, cached_at: new Date().toISOString() },
+        { bbl, building_id: buildingId, address: addressLabel, cached_at: new Date().toISOString() },
         { onConflict: "bbl" }
       );
 
@@ -279,6 +287,7 @@ export async function GET(request: NextRequest) {
       complaint_count: complaintCount,
       litigations: mappedLitigations,
       bedbug_reports: mappedBedbugs,
+      address_label: addressLabel,
       cached_at: new Date().toISOString(),
       from_cache: false,
     });

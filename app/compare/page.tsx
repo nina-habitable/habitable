@@ -302,21 +302,10 @@ function CompareContent() {
         const results: BuildingData[] = [];
         await Promise.all(
           initialBbls.slice(0, 3).map(async (bblVal) => {
-            const [propRes, geoRes] = await Promise.all([
-              fetch(`/api/property?bbl=${encodeURIComponent(bblVal)}`),
-              fetch(`https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(bblVal)}`),
-            ]);
-
+            const propRes = await fetch(`/api/property?bbl=${encodeURIComponent(bblVal)}`);
             if (!propRes.ok) return;
             const propData: PropertyResponse = await propRes.json();
-
-            let label = `Property ${bblVal}`;
-            if (geoRes.ok) {
-              const geoData = await geoRes.json();
-              const geoLabel = geoData.features?.[0]?.properties?.label;
-              if (geoLabel) label = geoLabel;
-            }
-
+            const label = propData.address_label || `Property ${bblVal}`;
             results.push({ bbl: bblVal, addressLabel: label, propertyData: propData });
           })
         );

@@ -246,24 +246,11 @@ export default function PropertyPage({
     async function load() {
       setLoadingProperty(true);
       try {
-        // Fetch property data and resolve address in parallel
-        const [propertyRes, geoRes] = await Promise.all([
-          fetch(`/api/property?bbl=${encodeURIComponent(bbl)}`),
-          fetch(`https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(bbl)}`),
-        ]);
-
-        if (propertyRes.ok) {
-          const data: PropertyResponse = await propertyRes.json();
-          setPropertyData(data);
-        } else {
-          throw new Error("Failed to fetch property data");
-        }
-
-        if (geoRes.ok) {
-          const geoData = await geoRes.json();
-          const label = geoData.features?.[0]?.properties?.label;
-          if (label) setAddressLabel(label);
-        }
+        const res = await fetch(`/api/property?bbl=${encodeURIComponent(bbl)}`);
+        if (!res.ok) throw new Error("Failed to fetch property data");
+        const data: PropertyResponse = await res.json();
+        setPropertyData(data);
+        if (data.address_label) setAddressLabel(data.address_label);
       } catch {
         setError("Failed to load property data.");
       } finally {
