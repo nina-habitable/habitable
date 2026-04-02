@@ -63,7 +63,7 @@ export default function Home() {
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            placeholder="Enter a NYC address (e.g. 553 Howard Ave)"
+            placeholder="Enter address (e.g., 553 Howard Ave, Brooklyn)"
             className="flex-1 rounded-lg border border-[var(--card-border)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-dim)] outline-none focus:border-[var(--muted)] focus:ring-1 focus:ring-[var(--muted)]"
           />
           <select
