@@ -44,6 +44,16 @@ export async function GET(request: NextRequest) {
       const cachedComplaintsList = cachedComplaints.data ?? [];
       const cachedUniqueComplaints = new Set(cachedComplaintsList.map((c: Record<string, string>) => c.complaint_id));
 
+      // Build address from cached violation data if not in properties table
+      let cachedAddress = cachedProperty.data?.address ?? null;
+      if (!cachedAddress && cached[0]?.raw) {
+        const raw = typeof cached[0].raw === "string" ? JSON.parse(cached[0].raw) : cached[0].raw;
+        if (raw.housenumber && raw.streetname) {
+          const boro = (raw.boro || "").charAt(0).toUpperCase() + (raw.boro || "").slice(1).toLowerCase();
+          cachedAddress = `${raw.housenumber} ${raw.streetname}, ${boro}, NY`;
+        }
+      }
+
       return NextResponse.json({
         violations: cached,
         vacate_orders: cachedVacate.data ?? [],
@@ -51,7 +61,7 @@ export async function GET(request: NextRequest) {
         complaint_count: cachedUniqueComplaints.size,
         litigations: cachedLitigations.data ?? [],
         bedbug_reports: cachedBedbugs.data ?? [],
-        address_label: cachedProperty.data?.address ?? null,
+        address_label: cachedAddress,
         cached_at: cached[0].created_at,
         from_cache: true,
       });
