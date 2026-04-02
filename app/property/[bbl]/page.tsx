@@ -392,13 +392,32 @@ function PropertyContent({ bbl }: { bbl: string }) {
   // Detect address mismatch
   const addressMismatch = useMemo(() => {
     if (!searchedQuery || !addressLabel) return null;
-    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
+    const abbrevs: Record<string, string> = {
+      st: "street", ave: "avenue", blvd: "boulevard", dr: "drive",
+      pl: "place", rd: "road", ct: "court", ln: "lane",
+      w: "west", e: "east", n: "north", s: "south",
+      pkwy: "parkway", hwy: "highway", ter: "terrace", cir: "circle",
+    };
+    const normalize = (s: string) => {
+      // Strip everything after first comma (city/state/zip)
+      const street = s.split(",")[0];
+      return street
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .split(" ")
+        .map((w) => abbrevs[w] || w)
+        .join(" ");
+    };
     const searched = normalize(searchedQuery);
     const returned = normalize(addressLabel);
-    // Extract house number and first word of street from each
-    const searchedParts = searched.split(" ");
-    const returnedParts = returned.split(" ");
-    if (searchedParts[0] !== returnedParts[0] || searchedParts[1] !== returnedParts[1]) {
+    // Compare house number + full street name
+    const searchedNum = searched.split(" ")[0];
+    const returnedNum = returned.split(" ")[0];
+    const searchedStreet = searched.split(" ").slice(1).join(" ");
+    const returnedStreet = returned.split(" ").slice(1).join(" ");
+    if (searchedNum !== returnedNum || searchedStreet !== returnedStreet) {
       return addressLabel;
     }
     return null;
