@@ -470,8 +470,8 @@ export function mapViolation(novdescription: string): MappedViolation {
 export const CLASS_INFO = {
   "A": {
     label: "Non-hazardous",
-    color: "#8B9A6B",
-    bgColor: "#1E2518",
+    color: "#6B8CAE",
+    bgColor: "#1A2533",
     deadline: "90 days to correct",
     description: "Not immediately dangerous, but still a code violation.",
   },

@@ -346,10 +346,8 @@ export default function PropertyPage({ params }: { params: { bbl: string } }) {
   const complaintCategories = useMemo(() => getComplaintCategories(filteredComplaints), [filteredComplaints]);
 
   const filteredComplaintCount = useMemo(() => {
-    if (!propertyData) return 0;
-    if (timeframe === "all") return new Set(propertyData.complaints.map((c) => c.complaint_id)).size;
-    return propertyData.complaint_count;
-  }, [propertyData, timeframe]);
+    return new Set(filteredComplaints.map((c) => c.complaint_id)).size;
+  }, [filteredComplaints]);
 
   const emergencyCount = useMemo(() =>
     filteredComplaints.filter((c) => c.type === "EMERGENCY").length,
@@ -430,6 +428,15 @@ export default function PropertyPage({ params }: { params: { bbl: string } }) {
                 <Link href={`/compare?bbls=${bbl}`} className="shrink-0 rounded-lg border border-[var(--card-border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--muted)] transition-colors">+ Compare</Link>
               </div>
             </div>
+
+            {/* Ownership */}
+            {ownerInfo && (
+              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-3">
+                <p className="text-xs text-[var(--muted-dim)] mb-0.5">Building owner (per HPD)</p>
+                <p className="text-sm font-medium text-[var(--foreground)]">{ownerInfo}</p>
+                <p className="text-[10px] text-[var(--muted-dim)] mt-0.5">Based on HPD litigation records. Ownership may have changed.</p>
+              </div>
+            )}
 
             {/* Vacate order banner */}
             {propertyData.vacate_orders.length > 0 && (
@@ -513,7 +520,12 @@ export default function PropertyPage({ params }: { params: { bbl: string } }) {
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-4 py-3">
                 <p className="text-xs text-[var(--muted-dim)] mb-0.5">Complaints ({timeframeLabel})</p>
-                <p className="text-lg font-bold text-[var(--foreground)]">{filteredComplaintCount}</p>
+                <p className="text-lg font-bold text-[var(--foreground)]">
+                  {filteredComplaintCount}
+                  {filteredComplaints.length !== filteredComplaintCount && (
+                    <span className="text-xs font-normal text-[var(--muted-dim)] ml-1">({filteredComplaints.length} issues)</span>
+                  )}
+                </p>
                 {emergencyCount > 0 && <p className="text-[10px] text-[#FF4D4D]">{emergencyCount} emergency</p>}
                 {complaintCategories.length > 0 && (
                   <p className="text-[10px] text-[var(--muted-dim)] mt-1">
@@ -607,15 +619,6 @@ export default function PropertyPage({ params }: { params: { bbl: string } }) {
                 )
               )}
             </div>
-
-            {/* Ownership */}
-            {ownerInfo && (
-              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5">
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-1">Building Owner (per HPD litigation)</h3>
-                <p className="text-sm text-[var(--muted)]">{ownerInfo}</p>
-                <p className="text-[10px] text-[var(--muted-dim)] mt-1">Based on HPD litigation records. Ownership may have changed since the most recent case.</p>
-              </div>
-            )}
 
             {/* Data freshness + disclaimer */}
             <div className="space-y-2 py-2">
