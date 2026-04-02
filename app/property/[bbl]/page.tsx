@@ -422,7 +422,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
               <option value="Bronx">Bronx</option>
               <option value="Staten Island">Staten Is.</option>
             </select>
-            <button type="submit" disabled={loading || loadingProperty} className="rounded-lg bg-[var(--foreground)] px-4 py-2 text-sm font-medium text-[var(--background)] hover:opacity-90 disabled:opacity-40">
+            <button type="submit" disabled={loading} className="rounded-lg bg-[var(--foreground)] px-4 py-2 text-sm font-medium text-[var(--background)] hover:opacity-90 disabled:opacity-40">
               {loading ? "..." : "Search"}
             </button>
           </form>
