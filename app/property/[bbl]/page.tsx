@@ -394,14 +394,43 @@ function PropertyContent({ bbl }: { bbl: string }) {
 
   // ─── Render ───────────────────────────────────────
 
-  // Detect address mismatch — only trigger when house number differs
+  // Detect address mismatch — compare house number AND street number/name
   const addressMismatch = useMemo(() => {
     if (!searchedQuery || !addressLabel) return null;
-    // Extract leading digits from each
+
+    const abbrevs: Record<string, string> = {
+      st: "street", ave: "avenue", blvd: "boulevard", dr: "drive",
+      pl: "place", rd: "road", ct: "court", ln: "lane",
+      w: "west", e: "east", n: "north", s: "south",
+      pkwy: "parkway", hwy: "highway", ter: "terrace", cir: "circle",
+    };
+
+    const normalize = (s: string) =>
+      s.split(",")[0].toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim()
+        .split(" ").map((w) => abbrevs[w] || w).join(" ");
+
+    // House number comparison
     const searchedNum = searchedQuery.match(/^\s*(\d+)/)?.[1];
     const returnedNum = addressLabel.match(/^\s*(\d+)/)?.[1];
-    if (!searchedNum || !returnedNum) return null;
-    if (searchedNum !== returnedNum) return addressLabel;
+    if (searchedNum && returnedNum && searchedNum !== returnedNum) return addressLabel;
+
+    // Street number comparison — extract all digits from the street part (after house number)
+    const searchedStreet = normalize(searchedQuery).replace(/^\d+\s*/, "");
+    const returnedStreet = normalize(addressLabel).replace(/^\d+\s*/, "");
+
+    // Extract the street number if it's a numbered street (e.g. "56" from "west 56th street")
+    const searchedStreetNum = searchedStreet.match(/(\d+)/)?.[1];
+    const returnedStreetNum = returnedStreet.match(/(\d+)/)?.[1];
+
+    if (searchedStreetNum && returnedStreetNum && searchedStreetNum !== returnedStreetNum) {
+      return addressLabel;
+    }
+
+    // For named streets (no numbers), compare normalized names
+    if (!searchedStreetNum && !returnedStreetNum && searchedStreet !== returnedStreet) {
+      return addressLabel;
+    }
+
     return null;
   }, [searchedQuery, addressLabel]);
 
