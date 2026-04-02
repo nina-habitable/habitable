@@ -41,7 +41,7 @@ export default function Home() {
         return;
       }
 
-      router.push(`/property/${foundBbl}`);
+      router.push(`/property/${foundBbl}?q=${encodeURIComponent(trimmed)}`);
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);

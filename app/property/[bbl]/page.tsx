@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, FormEvent, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, FormEvent, useMemo, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   mapViolation,
@@ -254,9 +254,10 @@ function PaginatedList<T>({
 
 // ─── Property Page ──────────────────────────────────
 
-export default function PropertyPage({ params }: { params: { bbl: string } }) {
+function PropertyContent({ bbl }: { bbl: string }) {
   const router = useRouter();
-  const bbl = params.bbl;
+  const searchParams = useSearchParams();
+  const searchedQuery = searchParams.get("q") || "";
 
   const [address, setAddress] = useState("");
   const [borough, setBorough] = useState("");
@@ -298,7 +299,7 @@ export default function PropertyPage({ params }: { params: { bbl: string } }) {
       const feature = data.features?.[0];
       const foundBbl = feature?.properties?.addendum?.pad?.bbl;
       if (!foundBbl) { setError("No results found for that address. Try a valid NYC address."); setLoading(false); return; }
-      router.push(`/property/${foundBbl}`);
+      router.push(`/property/${foundBbl}?q=${encodeURIComponent(trimmed)}`);
     } catch { setError("Something went wrong. Please try again."); setLoading(false); }
   }
 
@@ -388,6 +389,21 @@ export default function PropertyPage({ params }: { params: { bbl: string } }) {
 
   // ─── Render ───────────────────────────────────────
 
+  // Detect address mismatch
+  const addressMismatch = useMemo(() => {
+    if (!searchedQuery || !addressLabel) return null;
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
+    const searched = normalize(searchedQuery);
+    const returned = normalize(addressLabel);
+    // Extract house number and first word of street from each
+    const searchedParts = searched.split(" ");
+    const returnedParts = returned.split(" ");
+    if (searchedParts[0] !== returnedParts[0] || searchedParts[1] !== returnedParts[1]) {
+      return addressLabel;
+    }
+    return null;
+  }, [searchedQuery, addressLabel]);
+
   return (
     <div className="min-h-screen font-[family-name:var(--font-geist-sans)]">
       <header className="border-b border-[var(--card-border)] bg-[var(--card)]">
@@ -413,6 +429,11 @@ export default function PropertyPage({ params }: { params: { bbl: string } }) {
       </header>
 
       <main className="mx-auto max-w-2xl px-5 py-6">
+        {addressMismatch && (
+          <div className="rounded-xl border border-[#2A3545] bg-[#1A2533] px-4 py-3 mb-4 text-sm text-[#6B8CAE]">
+            We couldn&apos;t find an exact match for your address. Showing results for <span className="font-semibold text-[var(--foreground)]">{addressMismatch}</span>.
+          </div>
+        )}
         {loadingProperty && <p className="text-center text-sm text-[var(--muted)] py-12">Loading building data...</p>}
         {error && <div className="rounded-xl border border-red-900 bg-red-950 px-4 py-3 text-sm text-red-400">{error}</div>}
 
@@ -639,5 +660,17 @@ export default function PropertyPage({ params }: { params: { bbl: string } }) {
         )}
       </main>
     </div>
+  );
+}
+
+export default function PropertyPage({ params }: { params: { bbl: string } }) {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-sm text-[var(--muted)]">Loading...</p>
+      </div>
+    }>
+      <PropertyContent bbl={params.bbl} />
+    </Suspense>
   );
 }
