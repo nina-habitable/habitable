@@ -260,7 +260,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
   const searchedQuery = searchParams.get("q") || "";
   const geoAddress = searchParams.get("address") || "";
 
-  const [address, setAddress] = useState("");
+  const [address, setAddress] = useState(searchedQuery);
   const [borough, setBorough] = useState("");
   const [addressLabel, setAddressLabel] = useState(geoAddress);
   const [propertyData, setPropertyData] = useState<PropertyResponse | null>(null);
