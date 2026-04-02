@@ -23,6 +23,7 @@ export interface Complaint {
   complaint_id: string | null;
   complaint_status: string | null;
   major_category: string | null;
+  minor_category: string | null;
   type: string | null;
   received_date: string | null;
 }

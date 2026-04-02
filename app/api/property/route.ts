@@ -184,6 +184,7 @@ export async function GET(request: NextRequest) {
         complaint_id: v.complaint_id || null,
         complaint_status: v.complaint_status || null,
         major_category: v.major_category || null,
+        minor_category: v.minor_category || null,
         type: v.type || null,
         received_date: v.received_date || null,
       }));
