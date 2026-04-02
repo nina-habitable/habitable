@@ -41,7 +41,8 @@ export default function Home() {
         return;
       }
 
-      router.push(`/property/${foundBbl}?q=${encodeURIComponent(trimmed)}`);
+      const label = feature.properties.label || "";
+      router.push(`/property/${foundBbl}?q=${encodeURIComponent(trimmed)}&address=${encodeURIComponent(label)}`);
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);

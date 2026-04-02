@@ -14,6 +14,7 @@ async function safeFetch(url: string, label: string): Promise<Record<string, str
 
 export async function GET(request: NextRequest) {
   const bbl = request.nextUrl.searchParams.get("bbl");
+  const geoAddress = request.nextUrl.searchParams.get("address");
 
   console.log("[/api/property] called with bbl:", bbl);
 
@@ -108,11 +109,11 @@ export async function GET(request: NextRequest) {
       complaints[0]?.building_id ||
       null;
 
-    // Build address from HPD data
+    // Build address from HPD data, fall back to Geosearch address
     const firstViolation = violations[0];
     const addressLabel = firstViolation
       ? `${firstViolation.housenumber} ${firstViolation.streetname}, ${(firstViolation.boro || "").charAt(0).toUpperCase() + (firstViolation.boro || "").slice(1).toLowerCase()}, NY`
-      : null;
+      : geoAddress || null;
 
     console.log(`[/api/property] Fetched: ${violations.length} violations, ${vacateOrders.length} vacate orders, ${complaints.length} complaints, buildingId=${buildingId}`)
 

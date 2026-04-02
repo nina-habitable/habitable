@@ -258,10 +258,11 @@ function PropertyContent({ bbl }: { bbl: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchedQuery = searchParams.get("q") || "";
+  const geoAddress = searchParams.get("address") || "";
 
   const [address, setAddress] = useState("");
   const [borough, setBorough] = useState("");
-  const [addressLabel, setAddressLabel] = useState("");
+  const [addressLabel, setAddressLabel] = useState(geoAddress);
   const [propertyData, setPropertyData] = useState<PropertyResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingProperty, setLoadingProperty] = useState(true);
@@ -274,7 +275,10 @@ function PropertyContent({ bbl }: { bbl: string }) {
     async function load() {
       setLoadingProperty(true);
       try {
-        const res = await fetch(`/api/property?bbl=${encodeURIComponent(bbl)}`);
+        const apiUrl = geoAddress
+          ? `/api/property?bbl=${encodeURIComponent(bbl)}&address=${encodeURIComponent(geoAddress)}`
+          : `/api/property?bbl=${encodeURIComponent(bbl)}`;
+        const res = await fetch(apiUrl);
         if (!res.ok) throw new Error("Failed to fetch property data");
         const data: PropertyResponse = await res.json();
         setPropertyData(data);
@@ -299,7 +303,8 @@ function PropertyContent({ bbl }: { bbl: string }) {
       const feature = data.features?.[0];
       const foundBbl = feature?.properties?.addendum?.pad?.bbl;
       if (!foundBbl) { setError("No results found for that address. Try a valid NYC address."); setLoading(false); return; }
-      router.push(`/property/${foundBbl}?q=${encodeURIComponent(trimmed)}`);
+      const label = feature.properties.label || "";
+      router.push(`/property/${foundBbl}?q=${encodeURIComponent(trimmed)}&address=${encodeURIComponent(label)}`);
     } catch { setError("Something went wrong. Please try again."); setLoading(false); }
   }
 
@@ -389,37 +394,14 @@ function PropertyContent({ bbl }: { bbl: string }) {
 
   // ─── Render ───────────────────────────────────────
 
-  // Detect address mismatch
+  // Detect address mismatch — only trigger when house number differs
   const addressMismatch = useMemo(() => {
     if (!searchedQuery || !addressLabel) return null;
-    const abbrevs: Record<string, string> = {
-      st: "street", ave: "avenue", blvd: "boulevard", dr: "drive",
-      pl: "place", rd: "road", ct: "court", ln: "lane",
-      w: "west", e: "east", n: "north", s: "south",
-      pkwy: "parkway", hwy: "highway", ter: "terrace", cir: "circle",
-    };
-    const normalize = (s: string) => {
-      // Strip everything after first comma (city/state/zip)
-      const street = s.split(",")[0];
-      return street
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .split(" ")
-        .map((w) => abbrevs[w] || w)
-        .join(" ");
-    };
-    const searched = normalize(searchedQuery);
-    const returned = normalize(addressLabel);
-    // Compare house number + full street name
-    const searchedNum = searched.split(" ")[0];
-    const returnedNum = returned.split(" ")[0];
-    const searchedStreet = searched.split(" ").slice(1).join(" ");
-    const returnedStreet = returned.split(" ").slice(1).join(" ");
-    if (searchedNum !== returnedNum || searchedStreet !== returnedStreet) {
-      return addressLabel;
-    }
+    // Extract leading digits from each
+    const searchedNum = searchedQuery.match(/^\s*(\d+)/)?.[1];
+    const returnedNum = addressLabel.match(/^\s*(\d+)/)?.[1];
+    if (!searchedNum || !returnedNum) return null;
+    if (searchedNum !== returnedNum) return addressLabel;
     return null;
   }, [searchedQuery, addressLabel]);
 
