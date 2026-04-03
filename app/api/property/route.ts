@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
         supabase.from("litigations").select("*").eq("bbl", bbl),
         supabase.from("bedbug_reports").select("*").eq("bbl", bbl),
         supabase.from("properties").select("address").eq("bbl", bbl).single(),
-        supabase.from("building_details").select("*").eq("bbl", bbl).maybeSingle(),
-        supabase.from("registration_contacts").select("*").eq("bbl", bbl),
+        supabaseAdmin.from("building_details").select("*").eq("bbl", bbl).maybeSingle(),
+        supabaseAdmin.from("registration_contacts").select("*").eq("bbl", bbl),
       ]);
 
       const cachedComplaintsList = cachedComplaints.data ?? [];
