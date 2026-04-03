@@ -296,17 +296,23 @@ export async function GET(request: NextRequest) {
     }
 
     if (buildingDetail) {
+      console.log(`[/api/property] Writing building_details: building_id=${buildingDetail.building_id}, units=${buildingDetail.legal_class_a}`);
       writePromises.push(
         supabaseAdmin.from("building_details").upsert(buildingDetail, { onConflict: "building_id" }).then(({ error }) => {
-          if (error) console.error("Supabase building_details upsert error:", error);
+          if (error) console.error("Supabase building_details upsert error:", JSON.stringify(error));
+          else console.log("[/api/property] building_details write SUCCESS");
         })
       );
+    } else {
+      console.log("[/api/property] No building_details to write (buildingDetailsRaw empty)");
     }
 
     if (mappedContacts.length > 0) {
+      console.log(`[/api/property] Writing ${mappedContacts.length} registration_contacts`);
       writePromises.push(
         supabaseAdmin.from("registration_contacts").upsert(mappedContacts, { onConflict: "id" }).then(({ error }) => {
-          if (error) console.error("Supabase registration_contacts upsert error:", error);
+          if (error) console.error("Supabase registration_contacts upsert error:", JSON.stringify(error));
+          else console.log("[/api/property] registration_contacts write SUCCESS");
         })
       );
     }
