@@ -47,6 +47,28 @@ export interface BedbugReport {
   eradicated_unit_count: number;
 }
 
+export interface BuildingDetails {
+  building_id: string;
+  bbl: string;
+  legal_stories: number | null;
+  legal_class_a: number | null;
+  dob_building_class: string | null;
+  management_program: string | null;
+  registration_id: string | null;
+}
+
+export interface RegistrationContact {
+  id: string;
+  registration_id: string;
+  bbl: string;
+  type: string;
+  corporation_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  contact_description: string | null;
+  business_address: string | null;
+}
+
 export interface PropertyResponse {
   violations: Violation[];
   vacate_orders: VacateOrder[];
@@ -54,6 +76,8 @@ export interface PropertyResponse {
   complaint_count: number;
   litigations: Litigation[];
   bedbug_reports?: BedbugReport[];
+  building_details?: BuildingDetails | null;
+  registration_contacts?: RegistrationContact[];
   cached_at: string;
   from_cache: boolean;
   address_label?: string;

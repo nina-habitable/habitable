@@ -385,6 +385,15 @@ function PropertyContent({ bbl }: { bbl: string }) {
   const displayedViolations = mappedViolations.slice(0, visibleCount);
   const timeframeLabel = timeframe === "recent" ? `since ${twoYearsAgoLabel}` : "all time";
 
+  // Registration contacts
+  const contacts = useMemo(() => {
+    const list = propertyData?.registration_contacts ?? [];
+    const byType = (type: string) => list.find((c) => c.type === type);
+    return { owner: byType("CorporateOwner"), agent: byType("Agent"), headOfficer: byType("HeadOfficer"), siteManager: byType("SiteManager") };
+  }, [propertyData]);
+
+  const buildingDetails = propertyData?.building_details;
+
   // Ownership from most recent litigation
   const ownerInfo = useMemo(() => {
     if (!propertyData) return null;
@@ -439,23 +448,68 @@ function PropertyContent({ bbl }: { bbl: string }) {
 
         {propertyData && (
           <div className="space-y-5">
-            {/* Address header */}
+            {/* Address header + building info */}
             <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-[var(--foreground)]">{addressLabel || `Property ${bbl}`}</h2>
                   <p className="text-sm text-[var(--muted-dim)] font-[family-name:var(--font-geist-mono)]">BBL {bbl}</p>
+                  {buildingDetails && (
+                    <p className="text-xs text-[var(--muted)] mt-1">
+                      {[
+                        buildingDetails.legal_class_a ? `${buildingDetails.legal_class_a} units` : null,
+                        buildingDetails.legal_stories ? `${buildingDetails.legal_stories} stories` : null,
+                        buildingDetails.dob_building_class ? titleCase(buildingDetails.dob_building_class) : null,
+                      ].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
                 </div>
                 <Link href={`/compare?bbls=${bbl}`} className="shrink-0 rounded-lg border border-[var(--card-border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--muted)] transition-colors">+ Compare</Link>
               </div>
             </div>
 
-            {/* Ownership */}
-            {ownerInfo && (
-              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-3">
-                <p className="text-xs text-[var(--muted-dim)] mb-0.5">Building owner (per HPD)</p>
-                <p className="text-sm font-medium text-[var(--foreground)]">{ownerInfo}</p>
-                <p className="text-[10px] text-[var(--muted-dim)] mt-0.5">Based on HPD litigation records. Ownership may have changed.</p>
+            {/* Building Registration */}
+            {(contacts.owner || contacts.agent || ownerInfo) && (
+              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-4">
+                <h3 className="text-xs font-semibold text-[var(--muted-dim)] uppercase tracking-wide mb-2">Building Registration</h3>
+                <div className="space-y-1.5">
+                  {contacts.owner && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Owner</span>
+                      <span className="text-sm text-[var(--foreground)]">{contacts.owner.corporation_name || [contacts.owner.first_name, contacts.owner.last_name].filter(Boolean).join(" ")}</span>
+                    </div>
+                  )}
+                  {contacts.agent && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Agent</span>
+                      <span className="text-sm text-[var(--foreground)]">
+                        {[contacts.agent.first_name, contacts.agent.last_name].filter(Boolean).join(" ")}
+                        {contacts.agent.corporation_name && <span className="text-[var(--muted)]">, {contacts.agent.corporation_name}</span>}
+                      </span>
+                    </div>
+                  )}
+                  {contacts.headOfficer && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Head Officer</span>
+                      <span className="text-sm text-[var(--foreground)]">{[contacts.headOfficer.first_name, contacts.headOfficer.last_name].filter(Boolean).join(" ")}</span>
+                    </div>
+                  )}
+                  {contacts.siteManager && contacts.siteManager.last_name !== contacts.agent?.last_name && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Site Manager</span>
+                      <span className="text-sm text-[var(--foreground)]">{[contacts.siteManager.first_name, contacts.siteManager.last_name].filter(Boolean).join(" ")}</span>
+                    </div>
+                  )}
+                  {ownerInfo && !contacts.owner && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Owner</span>
+                      <span className="text-sm text-[var(--foreground)]">{ownerInfo}</span>
+                    </div>
+                  )}
+                  {ownerInfo && contacts.owner && (
+                    <p className="text-[10px] text-[var(--muted-dim)] mt-1">Also named in HPD litigation: {ownerInfo}</p>
+                  )}
+                </div>
               </div>
             )}
 

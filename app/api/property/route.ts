@@ -34,12 +34,14 @@ export async function GET(request: NextRequest) {
 
     if (cached && cached.length > 0) {
       // Also fetch cached data for other tables + address from properties
-      const [cachedVacate, cachedComplaints, cachedLitigations, cachedBedbugs, cachedProperty] = await Promise.all([
+      const [cachedVacate, cachedComplaints, cachedLitigations, cachedBedbugs, cachedProperty, cachedBuildingDetails, cachedContacts] = await Promise.all([
         supabase.from("vacate_orders").select("*").eq("bbl", bbl),
         supabase.from("complaints").select("*").eq("bbl", bbl),
         supabase.from("litigations").select("*").eq("bbl", bbl),
         supabase.from("bedbug_reports").select("*").eq("bbl", bbl),
         supabase.from("properties").select("address").eq("bbl", bbl).single(),
+        supabase.from("building_details").select("*").eq("bbl", bbl).maybeSingle(),
+        supabase.from("registration_contacts").select("*").eq("bbl", bbl),
       ]);
 
       const cachedComplaintsList = cachedComplaints.data ?? [];
@@ -62,6 +64,8 @@ export async function GET(request: NextRequest) {
         complaint_count: cachedUniqueComplaints.size,
         litigations: cachedLitigations.data ?? [],
         bedbug_reports: cachedBedbugs.data ?? [],
+        building_details: cachedBuildingDetails.data ?? null,
+        registration_contacts: cachedContacts.data ?? [],
         address_label: cachedAddress,
         cached_at: cached[0].created_at,
         from_cache: true,
@@ -122,11 +126,15 @@ export async function GET(request: NextRequest) {
       console.warn("[/api/property] No buildingId found — skipping litigation and bedbug fetch");
     }
 
-    // Fetch litigation and bedbug reports if we have a building_id
+    // Fetch litigation, bedbug, building details, and registration if we have a building_id
     let litigations: Record<string, string>[] = [];
     let bedbugs: Record<string, string>[] = [];
+    let buildingDetailsRaw: Record<string, string>[] = [];
+    let registrationRaw: Record<string, string>[] = [];
+    let contactsRaw: Record<string, string>[] = [];
+
     if (buildingId) {
-      [litigations, bedbugs] = await Promise.all([
+      [litigations, bedbugs, buildingDetailsRaw, registrationRaw] = await Promise.all([
         safeFetch(
           `https://data.cityofnewyork.us/resource/59kj-x8nc.json?buildingid=${encodeURIComponent(buildingId)}&$limit=500`,
           "Litigation"
@@ -135,8 +143,52 @@ export async function GET(request: NextRequest) {
           `https://data.cityofnewyork.us/resource/wz6d-d3jb.json?building_id=${encodeURIComponent(buildingId)}&$limit=100`,
           "Bedbug Reports"
         ),
+        safeFetch(
+          `https://data.cityofnewyork.us/resource/kj4p-ruqc.json?buildingid=${encodeURIComponent(buildingId)}&$limit=1`,
+          "Building Details"
+        ),
+        safeFetch(
+          `https://data.cityofnewyork.us/resource/tesw-yqqr.json?buildingid=${encodeURIComponent(buildingId)}&$limit=1`,
+          "Registration"
+        ),
       ]);
+
+      // Chain: fetch contacts using registrationid from registration response
+      const registrationId = registrationRaw[0]?.registrationid || buildingDetailsRaw[0]?.registrationid;
+      if (registrationId) {
+        contactsRaw = await safeFetch(
+          `https://data.cityofnewyork.us/resource/feu5-w2e2.json?registrationid=${encodeURIComponent(registrationId)}&$limit=20`,
+          "Registration Contacts"
+        );
+      }
     }
+
+    // Map building details
+    const buildingDetail = buildingDetailsRaw[0] ? {
+      building_id: buildingId,
+      bbl: bbl,
+      legal_stories: parseInt(buildingDetailsRaw[0].legalstories) || null,
+      legal_class_a: parseInt(buildingDetailsRaw[0].legalclassa) || null,
+      dob_building_class: buildingDetailsRaw[0].dobbuildingclass || null,
+      management_program: buildingDetailsRaw[0].managementprogram || null,
+      registration_id: buildingDetailsRaw[0].registrationid || null,
+    } : null;
+
+    // Map contacts
+    const mappedContacts = contactsRaw.map((c) => {
+      const bizParts = [c.businesshousenumber, c.businessstreetname, c.businesscity, c.businessstate, c.businesszip].filter(Boolean);
+      return {
+        id: c.registrationcontactid,
+        registration_id: c.registrationid,
+        bbl: bbl,
+        type: c.type || "Unknown",
+        corporation_name: c.corporationname || null,
+        first_name: c.firstname || null,
+        last_name: c.lastname || null,
+        contact_description: c.contactdescription || null,
+        business_address: bizParts.length > 0 ? bizParts.join(" ") : null,
+      };
+    });
 
     // Upsert property first (foreign key constraint)
     const { error: propertyError } = await supabaseAdmin
@@ -241,6 +293,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (buildingDetail) {
+      writePromises.push(
+        supabaseAdmin.from("building_details").upsert(buildingDetail, { onConflict: "building_id" }).then(({ error }) => {
+          if (error) console.error("Supabase building_details upsert error:", error);
+        })
+      );
+    }
+
+    if (mappedContacts.length > 0) {
+      writePromises.push(
+        supabaseAdmin.from("registration_contacts").upsert(mappedContacts, { onConflict: "id" }).then(({ error }) => {
+          if (error) console.error("Supabase registration_contacts upsert error:", error);
+        })
+      );
+    }
+
     await Promise.all(writePromises);
 
     // Return freshly fetched data mapped to our schema
@@ -299,6 +367,8 @@ export async function GET(request: NextRequest) {
       complaint_count: complaintCount,
       litigations: mappedLitigations,
       bedbug_reports: mappedBedbugs,
+      building_details: buildingDetail,
+      registration_contacts: mappedContacts,
       address_label: addressLabel,
       cached_at: new Date().toISOString(),
       from_cache: false,
