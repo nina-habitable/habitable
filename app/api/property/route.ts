@@ -167,6 +167,7 @@ export async function GET(request: NextRequest) {
 
     // Map building details
     const buildingDetail = buildingDetailsRaw[0] ? {
+      id: buildingId,
       building_id: buildingId,
       bbl: bbl,
       legal_stories: parseInt(buildingDetailsRaw[0].legalstories) || null,
@@ -298,7 +299,7 @@ export async function GET(request: NextRequest) {
     if (buildingDetail) {
       console.log(`[/api/property] Writing building_details: building_id=${buildingDetail.building_id}, units=${buildingDetail.legal_class_a}`);
       writePromises.push(
-        supabaseAdmin.from("building_details").upsert(buildingDetail, { onConflict: "building_id" }).then(({ error }) => {
+        supabaseAdmin.from("building_details").upsert(buildingDetail, { onConflict: "id" }).then(({ error }) => {
           if (error) console.error("Supabase building_details upsert error:", JSON.stringify(error));
           else console.log("[/api/property] building_details write SUCCESS");
         })
