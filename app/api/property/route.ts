@@ -33,16 +33,18 @@ export async function GET(request: NextRequest) {
       .gte("created_at", twentyFourHoursAgo);
 
     if (cached && cached.length > 0) {
-      // Also fetch cached data for other tables + address from properties
+      // Use supabaseAdmin for all cached reads to bypass RLS
       const [cachedVacate, cachedComplaints, cachedLitigations, cachedBedbugs, cachedProperty, cachedBuildingDetails, cachedContacts] = await Promise.all([
-        supabase.from("vacate_orders").select("*").eq("bbl", bbl),
-        supabase.from("complaints").select("*").eq("bbl", bbl),
-        supabase.from("litigations").select("*").eq("bbl", bbl),
-        supabase.from("bedbug_reports").select("*").eq("bbl", bbl),
-        supabase.from("properties").select("address").eq("bbl", bbl).single(),
+        supabaseAdmin.from("vacate_orders").select("*").eq("bbl", bbl),
+        supabaseAdmin.from("complaints").select("*").eq("bbl", bbl),
+        supabaseAdmin.from("litigations").select("*").eq("bbl", bbl),
+        supabaseAdmin.from("bedbug_reports").select("*").eq("bbl", bbl),
+        supabaseAdmin.from("properties").select("address").eq("bbl", bbl).single(),
         supabaseAdmin.from("building_details").select("*").eq("bbl", bbl).maybeSingle(),
         supabaseAdmin.from("registration_contacts").select("*").eq("bbl", bbl),
       ]);
+
+      console.log(`[/api/property] Cache hit for ${bbl}: building_details=${!!cachedBuildingDetails.data}, contacts=${(cachedContacts.data ?? []).length}, bd_error=${cachedBuildingDetails.error?.message ?? "none"}, contacts_error=${cachedContacts.error?.message ?? "none"}`);
 
       const cachedComplaintsList = cachedComplaints.data ?? [];
       const cachedUniqueComplaints = new Set(cachedComplaintsList.map((c: Record<string, string>) => c.complaint_id));
