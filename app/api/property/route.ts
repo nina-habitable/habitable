@@ -157,11 +157,13 @@ export async function GET(request: NextRequest) {
 
       // Chain: fetch contacts using registrationid from registration response
       const registrationId = registrationRaw[0]?.registrationid || buildingDetailsRaw[0]?.registrationid;
+      console.log(`[/api/property] registrationId=${registrationId}, registrationRaw=${registrationRaw.length}, buildingDetailsRaw=${buildingDetailsRaw.length}`);
       if (registrationId) {
         contactsRaw = await safeFetch(
           `https://data.cityofnewyork.us/resource/feu5-w2e2.json?registrationid=${encodeURIComponent(registrationId)}&$limit=20`,
           "Registration Contacts"
         );
+        console.log(`[/api/property] contactsRaw=${contactsRaw.length}, first id=${contactsRaw[0]?.registrationcontactid}`);
       }
     }
 
@@ -308,14 +310,17 @@ export async function GET(request: NextRequest) {
       console.log("[/api/property] No building_details to write (buildingDetailsRaw empty)");
     }
 
+    console.log(`[/api/property] mappedContacts.length=${mappedContacts.length}, first=${JSON.stringify(mappedContacts[0]?.id)}`);
     if (mappedContacts.length > 0) {
       console.log(`[/api/property] Writing ${mappedContacts.length} registration_contacts`);
-      writePromises.push(
-        supabaseAdmin.from("registration_contacts").upsert(mappedContacts, { onConflict: "id" }).then(({ error }) => {
-          if (error) console.error("Supabase registration_contacts upsert error:", JSON.stringify(error));
-          else console.log("[/api/property] registration_contacts write SUCCESS");
-        })
-      );
+      const { error: contactsError } = await supabaseAdmin
+        .from("registration_contacts")
+        .upsert(mappedContacts, { onConflict: "id" });
+      if (contactsError) {
+        console.error("Supabase registration_contacts upsert error:", JSON.stringify(contactsError));
+      } else {
+        console.log("[/api/property] registration_contacts write SUCCESS");
+      }
     }
 
     await Promise.all(writePromises);
