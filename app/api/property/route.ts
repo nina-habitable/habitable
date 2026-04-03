@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         supabaseAdmin.from("complaints").select("*").eq("bbl", bbl),
         supabaseAdmin.from("litigations").select("*").eq("bbl", bbl),
         supabaseAdmin.from("bedbug_reports").select("*").eq("bbl", bbl),
-        supabaseAdmin.from("properties").select("address").eq("bbl", bbl).single(),
+        supabaseAdmin.from("properties").select("address,nta").eq("bbl", bbl).single(),
         supabaseAdmin.from("building_details").select("*").eq("bbl", bbl).maybeSingle(),
         supabaseAdmin.from("registration_contacts").select("*").eq("bbl", bbl),
       ]);
@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
         building_details: cachedBuildingDetails.data ?? null,
         registration_contacts: cachedContacts.data ?? [],
         address_label: cachedAddress,
+        nta: cachedProperty.data?.nta ?? null,
         cached_at: cached[0].created_at,
         from_cache: true,
       });
@@ -120,6 +121,7 @@ export async function GET(request: NextRequest) {
     const addressLabel = firstViolation
       ? `${firstViolation.housenumber} ${firstViolation.streetname}, ${(firstViolation.boro || "").charAt(0).toUpperCase() + (firstViolation.boro || "").slice(1).toLowerCase()}, NY`
       : geoAddress || null;
+    const nta = firstViolation?.nta || null;
 
     console.log(`[/api/property] Fetched: ${violations.length} violations, ${vacateOrders.length} vacate orders, ${complaints.length} complaints, buildingId=${buildingId}`)
 
@@ -199,7 +201,7 @@ export async function GET(request: NextRequest) {
     const { error: propertyError } = await supabaseAdmin
       .from("properties")
       .upsert(
-        { bbl, building_id: buildingId, address: addressLabel, cached_at: new Date().toISOString() },
+        { bbl, building_id: buildingId, address: addressLabel, nta: nta, cached_at: new Date().toISOString() },
         { onConflict: "bbl" }
       );
 
@@ -384,6 +386,7 @@ export async function GET(request: NextRequest) {
       building_details: buildingDetail,
       registration_contacts: mappedContacts,
       address_label: addressLabel,
+      nta: nta,
       cached_at: new Date().toISOString(),
       from_cache: false,
     });

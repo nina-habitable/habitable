@@ -81,4 +81,5 @@ export interface PropertyResponse {
   cached_at: string;
   from_cache: boolean;
   address_label?: string;
+  nta?: string | null;
 }

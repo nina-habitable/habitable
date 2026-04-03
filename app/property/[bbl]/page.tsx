@@ -454,12 +454,13 @@ function PropertyContent({ bbl }: { bbl: string }) {
                 <div>
                   <h2 className="text-lg font-semibold text-[var(--foreground)]">{addressLabel || `Property ${bbl}`}</h2>
                   <p className="text-sm text-[var(--muted-dim)] font-[family-name:var(--font-geist-mono)]">BBL {bbl}</p>
-                  {buildingDetails && (
+                  {(buildingDetails || propertyData?.nta) && (
                     <p className="text-xs text-[var(--muted)] mt-1">
                       {[
-                        buildingDetails.legal_class_a ? `${buildingDetails.legal_class_a} units` : null,
-                        buildingDetails.legal_stories ? `${buildingDetails.legal_stories} stories` : null,
-                        buildingDetails.dob_building_class ? titleCase(buildingDetails.dob_building_class) : null,
+                        buildingDetails?.legal_class_a ? `${buildingDetails.legal_class_a} units` : null,
+                        buildingDetails?.legal_stories ? `${buildingDetails.legal_stories} stories` : null,
+                        buildingDetails?.dob_building_class ? titleCase(buildingDetails.dob_building_class) : null,
+                        propertyData?.nta || null,
                       ].filter(Boolean).join(" · ")}
                     </p>
                   )}

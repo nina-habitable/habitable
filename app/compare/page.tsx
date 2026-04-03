@@ -195,11 +195,12 @@ function BuildingCard({
           <p className="text-[10px] text-[var(--muted-dim)] font-[family-name:var(--font-geist-mono)]">
             BBL {bbl}
           </p>
-          {propertyData.building_details && (
+          {(propertyData.building_details || propertyData.nta) && (
             <p className="text-[10px] text-[var(--muted)] mt-0.5">
               {[
-                propertyData.building_details.legal_class_a ? `${propertyData.building_details.legal_class_a} units` : null,
-                propertyData.building_details.legal_stories ? `${propertyData.building_details.legal_stories} stories` : null,
+                propertyData.building_details?.legal_class_a ? `${propertyData.building_details.legal_class_a} units` : null,
+                propertyData.building_details?.legal_stories ? `${propertyData.building_details.legal_stories} stories` : null,
+                propertyData.nta || null,
               ].filter(Boolean).join(" · ")}
             </p>
           )}
