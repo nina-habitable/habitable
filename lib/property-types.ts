@@ -79,7 +79,19 @@ export interface PropertyResponse {
   building_details?: BuildingDetails | null;
   registration_contacts?: RegistrationContact[];
   cached_at: string;
+  aep_status?: AepEntry[];
   from_cache: boolean;
   address_label?: string;
   nta?: string | null;
+}
+
+export interface AepEntry {
+  id: string;
+  bbl: string;
+  building_id: string | null;
+  aep_start_date: string | null;
+  discharge_date: string | null;
+  current_status: string | null;
+  aep_round: string | null;
+  violations_at_start: number | null;
 }

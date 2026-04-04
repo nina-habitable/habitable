@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     if (cached && cached.length > 0) {
       // Use supabaseAdmin for all cached reads to bypass RLS
-      const [cachedVacate, cachedComplaints, cachedLitigations, cachedBedbugs, cachedProperty, cachedBuildingDetails, cachedContacts] = await Promise.all([
+      const [cachedVacate, cachedComplaints, cachedLitigations, cachedBedbugs, cachedProperty, cachedBuildingDetails, cachedContacts, cachedAep] = await Promise.all([
         supabaseAdmin.from("vacate_orders").select("*").eq("bbl", bbl),
         supabaseAdmin.from("complaints").select("*").eq("bbl", bbl),
         supabaseAdmin.from("litigations").select("*").eq("bbl", bbl),
@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
         supabaseAdmin.from("properties").select("address,nta").eq("bbl", bbl).single(),
         supabaseAdmin.from("building_details").select("*").eq("bbl", bbl).maybeSingle(),
         supabaseAdmin.from("registration_contacts").select("*").eq("bbl", bbl),
+        supabaseAdmin.from("aep_status").select("*").eq("bbl", bbl),
       ]);
 
       console.log(`[/api/property] Cache hit for ${bbl}: building_details=${!!cachedBuildingDetails.data}, contacts=${(cachedContacts.data ?? []).length}, bd_error=${cachedBuildingDetails.error?.message ?? "none"}, contacts_error=${cachedContacts.error?.message ?? "none"}`);
@@ -68,6 +69,7 @@ export async function GET(request: NextRequest) {
         bedbug_reports: cachedBedbugs.data ?? [],
         building_details: cachedBuildingDetails.data ?? null,
         registration_contacts: cachedContacts.data ?? [],
+        aep_status: cachedAep.data ?? [],
         address_label: cachedAddress,
         nta: cachedProperty.data?.nta ?? null,
         cached_at: cached[0].created_at,
@@ -90,8 +92,8 @@ export async function GET(request: NextRequest) {
     const appToken = process.env.NYC_OPEN_DATA_APP_TOKEN || "";
     const twoYearsAgo = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-    // Fetch violations, vacate orders, and complaints in parallel
-    const [violations, vacateOrders, complaints] = await Promise.all([
+    // Fetch violations, vacate orders, complaints, and AEP status in parallel
+    const [violations, vacateOrders, complaints, aepRaw] = await Promise.all([
       safeFetch(
         `https://data.cityofnewyork.us/resource/wvxf-dwi5.json?bbl=${encodeURIComponent(bbl)}&$limit=2000&$where=${encodeURIComponent(whereClause)}`,
         "HPD Violations"
@@ -103,6 +105,10 @@ export async function GET(request: NextRequest) {
       safeFetch(
         `https://data.cityofnewyork.us/resource/ygpa-z7cr.json?bbl=${encodeURIComponent(bbl)}&$limit=500&$$app_token=${appToken}&$where=received_date>'${twoYearsAgo}'`,
         "Complaints"
+      ),
+      safeFetch(
+        `https://data.cityofnewyork.us/resource/hcir-3275.json?bbl=${encodeURIComponent(bbl)}&$limit=50`,
+        "AEP Status"
       ),
     ]);
 
@@ -196,6 +202,18 @@ export async function GET(request: NextRequest) {
         business_address: bizParts.length > 0 ? bizParts.join(" ") : null,
       };
     });
+
+    // Map AEP entries
+    const mappedAep = aepRaw.map((a) => ({
+      id: `${a.building_id || bbl}-${a.aep_start_date || "unknown"}`,
+      bbl: bbl,
+      building_id: a.building_id || null,
+      aep_start_date: a.aep_start_date || null,
+      discharge_date: a.discharge_date || null,
+      current_status: a.current_status || null,
+      aep_round: a.aep_round || null,
+      violations_at_start: parseInt(a.of_b_c_violations_at_start) || null,
+    }));
 
     // Upsert property first (foreign key constraint)
     const { error: propertyError } = await supabaseAdmin
@@ -325,6 +343,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    if (mappedAep.length > 0) {
+      const { error: aepError } = await supabaseAdmin
+        .from("aep_status")
+        .upsert(mappedAep, { onConflict: "id" });
+      if (aepError) console.error("Supabase aep_status upsert error:", JSON.stringify(aepError));
+    }
+
     await Promise.all(writePromises);
 
     // Return freshly fetched data mapped to our schema
@@ -385,6 +410,7 @@ export async function GET(request: NextRequest) {
       bedbug_reports: mappedBedbugs,
       building_details: buildingDetail,
       registration_contacts: mappedContacts,
+      aep_status: mappedAep,
       address_label: addressLabel,
       nta: nta,
       cached_at: new Date().toISOString(),

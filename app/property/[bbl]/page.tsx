@@ -525,6 +525,42 @@ function PropertyContent({ bbl }: { bbl: string }) {
               </div>
             )}
 
+            {/* AEP Watchlist Banner */}
+            {(() => {
+              const aep = propertyData.aep_status ?? [];
+              if (aep.length === 0) return null;
+              const active = aep.filter((a) => a.current_status === "AEP Active");
+              const discharged = aep.filter((a) => a.current_status !== "AEP Active");
+              const sortedAep = [...aep].sort((a, b) => (b.aep_start_date ?? "").localeCompare(a.aep_start_date ?? ""));
+
+              return active.length > 0 ? (
+                <div className="rounded-xl border-2 border-[#7C2D12] bg-[#431407] p-5">
+                  <p className="text-base font-bold text-orange-400 mb-1">HPD Watchlist Building</p>
+                  <p className="text-sm text-orange-300">This building is on HPD&apos;s Alternative Enforcement Program, a watchlist for buildings with the most severe and persistent housing code violations. HPD has placed this building under enhanced enforcement and monitoring.</p>
+                  {aep.length > 1 && <p className="text-xs text-orange-400/70 mt-1">This building has been placed on HPD&apos;s watchlist {aep.length} times.</p>}
+                  <div className="mt-3 space-y-1">
+                    {sortedAep.map((a) => (
+                      <div key={a.id} className="flex items-center gap-2 text-xs text-orange-300/80">
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${a.current_status === "AEP Active" ? "bg-orange-400" : "bg-[var(--muted-dim)]"}`} />
+                        <span>{a.aep_round}</span>
+                        <span className="text-orange-400/50">·</span>
+                        <span>{formatDate(a.aep_start_date)}{a.discharge_date ? ` — ${formatDate(a.discharge_date)}` : " — present"}</span>
+                        {a.violations_at_start && <span className="text-orange-400/50">· {a.violations_at_start} violations at start</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-3">
+                  <p className="text-sm text-[var(--muted)]">
+                    This building was previously on HPD&apos;s worst-offender watchlist
+                    {discharged.length > 0 && ` (discharged ${formatDate(discharged.sort((a, b) => (b.discharge_date ?? "").localeCompare(a.discharge_date ?? ""))[0].discharge_date)})`}.
+                    {aep.length > 1 && ` Placed on the watchlist ${aep.length} times.`}
+                  </p>
+                </div>
+              );
+            })()}
+
             {/* Plain-English summary — prominent */}
             {summary && (
               <div className="rounded-xl border-2 bg-[var(--card)] p-6" style={{

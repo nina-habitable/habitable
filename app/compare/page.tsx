@@ -273,6 +273,13 @@ function BuildingCard({
             </p>
           </div>
         )}
+        {(propertyData.aep_status ?? []).some((a) => a.current_status === "AEP Active") && (
+          <div className="rounded-lg border border-[#7C2D12] bg-[#431407] px-2 py-1.5 mt-2">
+            <p className="text-xs font-semibold text-orange-400">
+              AEP Watchlist
+            </p>
+          </div>
+        )}
       </div>
 
       {/* View full profile link */}
