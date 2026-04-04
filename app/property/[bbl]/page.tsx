@@ -259,6 +259,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
   const searchParams = useSearchParams();
   const searchedQuery = searchParams.get("q") || "";
   const geoAddress = searchParams.get("address") || "";
+  const geoBin = searchParams.get("bin") || "";
 
   const [address, setAddress] = useState(searchedQuery);
   const [borough, setBorough] = useState("");
@@ -275,9 +276,10 @@ function PropertyContent({ bbl }: { bbl: string }) {
     async function load() {
       setLoadingProperty(true);
       try {
-        const apiUrl = geoAddress
-          ? `/api/property?bbl=${encodeURIComponent(bbl)}&address=${encodeURIComponent(geoAddress)}`
-          : `/api/property?bbl=${encodeURIComponent(bbl)}`;
+        const params = new URLSearchParams({ bbl });
+        if (geoAddress) params.set("address", geoAddress);
+        if (geoBin) params.set("bin", geoBin);
+        const apiUrl = `/api/property?${params.toString()}`;
         const res = await fetch(apiUrl);
         if (!res.ok) throw new Error("Failed to fetch property data");
         const data: PropertyResponse = await res.json();
@@ -304,7 +306,8 @@ function PropertyContent({ bbl }: { bbl: string }) {
       const foundBbl = feature?.properties?.addendum?.pad?.bbl;
       if (!foundBbl) { setError("No results found for that address. Try a valid NYC address."); setLoading(false); return; }
       const label = feature.properties.label || "";
-      router.push(`/property/${foundBbl}?q=${encodeURIComponent(trimmed)}&address=${encodeURIComponent(label)}`);
+      const foundBin = feature.properties.addendum?.pad?.bin || "";
+      router.push(`/property/${foundBbl}?q=${encodeURIComponent(trimmed)}&address=${encodeURIComponent(label)}&bin=${foundBin}`);
     } catch { setError("Something went wrong. Please try again."); setLoading(false); }
   }
 

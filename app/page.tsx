@@ -42,7 +42,8 @@ export default function Home() {
       }
 
       const label = feature.properties.label || "";
-      router.push(`/property/${foundBbl}?q=${encodeURIComponent(trimmed)}&address=${encodeURIComponent(label)}`);
+      const bin = feature.properties.addendum?.pad?.bin || "";
+      router.push(`/property/${foundBbl}?q=${encodeURIComponent(trimmed)}&address=${encodeURIComponent(label)}&bin=${bin}`);
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);

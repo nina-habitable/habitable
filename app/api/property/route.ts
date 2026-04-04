@@ -15,6 +15,7 @@ async function safeFetch(url: string, label: string): Promise<Record<string, str
 export async function GET(request: NextRequest) {
   const bbl = request.nextUrl.searchParams.get("bbl");
   const geoAddress = request.nextUrl.searchParams.get("address");
+  const geoBin = request.nextUrl.searchParams.get("bin");
 
   console.log("[/api/property] called with bbl:", bbl);
 
@@ -116,11 +117,25 @@ export async function GET(request: NextRequest) {
     const complaintCount = uniqueComplaintIds.size;
 
     // Extract building_id from any response that has it
-    const buildingId =
+    let buildingId =
       violations[0]?.buildingid ||
       vacateOrders[0]?.building_id ||
       complaints[0]?.building_id ||
       null;
+
+    // Fallback: look up buildingid via BIN from HPD Buildings dataset
+    const bin = violations[0]?.bin || geoBin;
+    if (!buildingId && bin) {
+      console.log(`[/api/property] No buildingId from data, looking up via BIN=${bin}`);
+      const binLookup = await safeFetch(
+        `https://data.cityofnewyork.us/resource/kj4p-ruqc.json?bin=${encodeURIComponent(bin)}&$limit=1`,
+        "HPD Buildings (BIN lookup)"
+      );
+      if (binLookup[0]?.buildingid) {
+        buildingId = binLookup[0].buildingid;
+        console.log(`[/api/property] Found buildingId=${buildingId} from BIN=${bin}`);
+      }
+    }
 
     // Build address from HPD data, fall back to Geosearch address
     const firstViolation = violations[0];
@@ -129,12 +144,7 @@ export async function GET(request: NextRequest) {
       : geoAddress || null;
     const nta = firstViolation?.nta || null;
 
-    console.log(`[/api/property] Fetched: ${violations.length} violations, ${vacateOrders.length} vacate orders, ${complaints.length} complaints, buildingId=${buildingId}`)
-
-    // Log if buildingId is missing — bedbugs and litigation won't be fetched
-    if (!buildingId) {
-      console.warn("[/api/property] No buildingId found — skipping litigation and bedbug fetch");
-    }
+    console.log(`[/api/property] Fetched: ${violations.length} violations, ${vacateOrders.length} vacate orders, ${complaints.length} complaints, buildingId=${buildingId}, bin=${bin}`)
 
     // Fetch litigation, bedbug, building details, and registration if we have a building_id
     let litigations: Record<string, string>[] = [];
