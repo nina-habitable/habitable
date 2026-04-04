@@ -192,6 +192,7 @@ export async function GET(request: NextRequest) {
       bbl: bbl,
       legal_stories: parseInt(buildingDetailsRaw[0].legalstories) || null,
       legal_class_a: parseInt(buildingDetailsRaw[0].legalclassa) || null,
+      legal_class_b: parseInt(buildingDetailsRaw[0].legalclassb) || null,
       dob_building_class: buildingDetailsRaw[0].dobbuildingclass || null,
       management_program: buildingDetailsRaw[0].managementprogram || null,
       registration_id: buildingDetailsRaw[0].registrationid || null,

@@ -715,10 +715,38 @@ function PropertyContent({ bbl }: { bbl: string }) {
                     )}
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-green-900 bg-green-950 p-5 text-center">
-                    <p className="text-sm font-medium text-green-400">No open violations found</p>
-                    <p className="text-xs text-green-500/70 mt-1">{timeframe === "recent" ? 'No violations in the last 2 years. Try "All time" to see older records.' : "This building has no unresolved HPD violations on record."}</p>
-                  </div>
+                  (() => {
+                    const noData = propertyData.violations.length === 0 && propertyData.complaints.length === 0 && propertyData.litigations.length === 0;
+                    const bd = buildingDetails;
+                    const isCondo = bd && (
+                      (bd.dob_building_class || "").toUpperCase().includes("CONDO") ||
+                      (bd.dob_building_class || "").toUpperCase().includes("CONDOMINIUM") ||
+                      (bd.legal_class_b ?? 0) > 0
+                    );
+
+                    if (noData && isCondo) {
+                      return (
+                        <div className="rounded-xl border border-[#3D2E0A] bg-[#2E2810] p-5 text-center">
+                          <p className="text-sm font-medium text-[#FFB020]">Condo / co-op unit detected</p>
+                          <p className="text-xs text-[#FFB020]/70 mt-1">This appears to be a condo or co-op unit. HPD tracks building violations under the master building address, not individual units. Try searching the main building address instead for a complete violation history.</p>
+                        </div>
+                      );
+                    }
+                    if (noData && !bd) {
+                      return (
+                        <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5 text-center">
+                          <p className="text-sm font-medium text-[var(--muted)]">No HPD data found for this address</p>
+                          <p className="text-xs text-[var(--muted-dim)] mt-1">This may be a condo or co-op unit, a new building, or an address not yet in HPD&apos;s system. Try searching the main building address if this is a condo or co-op.</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="rounded-xl border border-green-900 bg-green-950 p-5 text-center">
+                        <p className="text-sm font-medium text-green-400">No open violations found</p>
+                        <p className="text-xs text-green-500/70 mt-1">{timeframe === "recent" ? 'No violations in the last 2 years. Try "All time" to see older records.' : "This building has no unresolved HPD violations on record."}</p>
+                      </div>
+                    );
+                  })()
                 )
               )}
 

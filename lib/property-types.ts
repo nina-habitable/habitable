@@ -52,6 +52,7 @@ export interface BuildingDetails {
   bbl: string;
   legal_stories: number | null;
   legal_class_a: number | null;
+  legal_class_b: number | null;
   dob_building_class: string | null;
   management_program: string | null;
   registration_id: string | null;
