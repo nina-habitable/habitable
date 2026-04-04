@@ -449,7 +449,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
             We couldn&apos;t find an exact match for your address. Showing results for <span className="font-semibold text-[var(--foreground)]">{addressMismatch}</span>.
             {geoCoords && (
               <> {" "}
-                <a href={`https://www.google.com/maps?q=${geoCoords}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--foreground)]">View on map</a>
+                <a href={`https://www.google.com/maps?q=${geoCoords}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--foreground)]">View on map to verify this is your building</a>
               </>
             )}
           </div>
