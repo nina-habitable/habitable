@@ -43,7 +43,9 @@ export default function Home() {
 
       const label = feature.properties.label || "";
       const bin = feature.properties.addendum?.pad?.bin || "";
-      router.push(`/property/${foundBbl}?q=${encodeURIComponent(trimmed)}&address=${encodeURIComponent(label)}&bin=${bin}`);
+      const [lng, lat] = feature.geometry?.coordinates || [];
+      const coords = lat && lng ? `${lat},${lng}` : "";
+      router.push(`/property/${foundBbl}?q=${encodeURIComponent(trimmed)}&address=${encodeURIComponent(label)}&bin=${bin}&coords=${coords}`);
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);

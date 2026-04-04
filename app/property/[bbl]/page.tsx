@@ -260,6 +260,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
   const searchedQuery = searchParams.get("q") || "";
   const geoAddress = searchParams.get("address") || "";
   const geoBin = searchParams.get("bin") || "";
+  const geoCoords = searchParams.get("coords") || "";
 
   const [address, setAddress] = useState(searchedQuery);
   const [borough, setBorough] = useState("");
@@ -307,7 +308,9 @@ function PropertyContent({ bbl }: { bbl: string }) {
       if (!foundBbl) { setError("No results found for that address. Try a valid NYC address."); setLoading(false); return; }
       const label = feature.properties.label || "";
       const foundBin = feature.properties.addendum?.pad?.bin || "";
-      router.push(`/property/${foundBbl}?q=${encodeURIComponent(trimmed)}&address=${encodeURIComponent(label)}&bin=${foundBin}`);
+      const [lng, lat] = feature.geometry?.coordinates || [];
+      const coords = lat && lng ? `${lat},${lng}` : "";
+      router.push(`/property/${foundBbl}?q=${encodeURIComponent(trimmed)}&address=${encodeURIComponent(label)}&bin=${foundBin}&coords=${coords}`);
     } catch { setError("Something went wrong. Please try again."); setLoading(false); }
   }
 
@@ -444,6 +447,11 @@ function PropertyContent({ bbl }: { bbl: string }) {
         {addressMismatch && (
           <div className="rounded-xl border border-[#2A3545] bg-[#1A2533] px-4 py-3 mb-4 text-sm text-[#6B8CAE]">
             We couldn&apos;t find an exact match for your address. Showing results for <span className="font-semibold text-[var(--foreground)]">{addressMismatch}</span>.
+            {geoCoords && (
+              <> {" "}
+                <a href={`https://www.google.com/maps?q=${geoCoords}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--foreground)]">View on map</a>
+              </>
+            )}
           </div>
         )}
         {loadingProperty && <p className="text-center text-sm text-[var(--muted)] py-12">Loading building data...</p>}
