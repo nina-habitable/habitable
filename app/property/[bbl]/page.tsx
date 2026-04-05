@@ -400,6 +400,16 @@ function PropertyContent({ bbl }: { bbl: string }) {
 
   const buildingDetails = propertyData?.building_details;
 
+  // Building type detection
+  const buildingType = useMemo(() => {
+    const lot = parseInt(bbl.slice(-4)) || 0;
+    const corpName = (contacts.owner?.corporation_name || "").toUpperCase();
+    if (corpName.includes("HDFC") || corpName.includes("COOPERATIVE") || /APT(?:ARTMENT)?S?\s+CORP/.test(corpName)) return "Co-op";
+    if (corpName.includes("HOA") || corpName.includes("CONDO") || corpName.includes("CONDOMINIUM")) return "Condo";
+    if (lot >= 7500) return "Condo / co-op";
+    return null;
+  }, [bbl, contacts]);
+
   // Ownership from most recent litigation
   const ownerInfo = useMemo(() => {
     if (!propertyData) return null;
@@ -465,13 +475,13 @@ function PropertyContent({ bbl }: { bbl: string }) {
                 <div>
                   <h2 className="text-lg font-semibold text-[var(--foreground)]">{addressLabel || `Property ${bbl}`}</h2>
                   <p className="text-sm text-[var(--muted-dim)] font-[family-name:var(--font-geist-mono)]">BBL {bbl}</p>
-                  {(buildingDetails || propertyData?.nta) && (
+                  {(buildingDetails || propertyData?.nta || buildingType) && (
                     <p className="text-xs text-[var(--muted)] mt-1">
                       {[
                         buildingDetails?.legal_class_a ? `${buildingDetails.legal_class_a} units` : null,
                         buildingDetails?.legal_stories ? `${buildingDetails.legal_stories} stories` : null,
-                        buildingDetails?.dob_building_class ? titleCase(buildingDetails.dob_building_class) : null,
                         propertyData?.nta || null,
+                        buildingType,
                       ].filter(Boolean).join(" · ")}
                     </p>
                   )}
