@@ -49,6 +49,17 @@ const CLOSED_STATUSES = new Set([
   "CERTIFICATION POSTPONEMENT GRANTED",
 ]);
 
+// Statuses where the landlord has definitively failed to fix the problem
+const ACTION_REQUIRED_STATUSES = new Set([
+  "NOT COMPLIED WITH", "INVALID CERTIFICATION", "SECOND NO ACCESS TO RE-INSPECT VIOLATION",
+  "FALSE CERTIFICATION", "DEFECT LETTER ISSUED", "VIOLATION WILL BE REINSPECTED",
+]);
+
+function requiresAction(status: string | null): boolean {
+  if (!status) return false;
+  return ACTION_REQUIRED_STATUSES.has(status.toUpperCase());
+}
+
 function isOpenViolation(status: string | null): boolean {
   if (!status) return true;
   return !CLOSED_STATUSES.has(status.toUpperCase());
@@ -377,6 +388,11 @@ function PropertyContent({ bbl }: { bbl: string }) {
   const filteredViolations = useMemo(() =>
     timeframeViolations.filter((v) => isOpenViolation(v.status)),
     [timeframeViolations]
+  );
+
+  const actionRequiredCount = useMemo(() =>
+    filteredViolations.filter((v) => requiresAction(v.status)).length,
+    [filteredViolations]
   );
 
 
@@ -736,8 +752,9 @@ function PropertyContent({ bbl }: { bbl: string }) {
                 <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">Open Violations</h3>
                 <div className="grid grid-cols-5 gap-2">
                   <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-3 text-center">
-                    <p className="text-xl font-bold text-[var(--foreground)]">{filteredViolations.length}</p>
-                    <p className="text-[10px] text-[var(--muted-dim)] mt-0.5">Open</p>
+                    <p className="text-xl font-bold text-[#FF4D4D]">{actionRequiredCount}</p>
+                    <p className="text-[10px] text-[var(--muted-dim)] mt-0.5">Require action</p>
+                    <p className="text-[10px] text-[var(--muted-dim)]">{filteredViolations.length} total open</p>
                   </div>
                   {(["C", "B", "A", "I"] as const).map((cls) => {
                     const info = CLASS_INFO[cls];
