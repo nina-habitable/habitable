@@ -80,9 +80,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Excluded statuses (non-open / resolved / dismissed):
+    // Excluded statuses (closed, resolved, dismissed, or pre-inspection):
     //   VIOLATION CLOSED, VIOLATION DISMISSED, NOV CERTIFIED LATE,
-    //   NOV CERTIFIED ON TIME, INFO NOV SENT OUT, LEAD DOCS SUBMITTED, ACCEPTABLE
+    //   NOV CERTIFIED ON TIME, INFO NOV SENT OUT, LEAD DOCS SUBMITTED ACCEPTABLE,
+    //   NOV SENT OUT, NOTICE OF ISSUANCE SENT TO TENANT, CERTIFICATION POSTPONEMENT GRANTED
     const whereClause = [
       "currentstatus!='VIOLATION CLOSED'",
       "currentstatus!='VIOLATION DISMISSED'",
@@ -90,6 +91,9 @@ export async function GET(request: NextRequest) {
       "currentstatus!='NOV CERTIFIED ON TIME'",
       "currentstatus!='INFO NOV SENT OUT'",
       "currentstatus!='LEAD DOCS SUBMITTED, ACCEPTABLE'",
+      "currentstatus!='NOV SENT OUT'",
+      "currentstatus!='NOTICE OF ISSUANCE SENT TO TENANT'",
+      "currentstatus!='CERTIFICATION POSTPONEMENT GRANTED'",
     ].join(" AND ");
 
     const appToken = process.env.NYC_OPEN_DATA_APP_TOKEN || "";
