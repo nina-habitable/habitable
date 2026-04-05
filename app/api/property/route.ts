@@ -73,6 +73,8 @@ export async function GET(request: NextRequest) {
         registration_contacts: cachedContacts.data ?? [],
         aep_status: cachedAep.data ?? [],
         service_requests_311: cached311.data ?? [],
+        pending_notice_count: 0,
+        pending_notices_by_date: [],
         address_label: cachedAddress,
         nta: cachedProperty.data?.nta ?? null,
         cached_at: cached[0].created_at,
@@ -99,8 +101,8 @@ export async function GET(request: NextRequest) {
     const appToken = process.env.NYC_OPEN_DATA_APP_TOKEN || "";
     const twoYearsAgo = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-    // Fetch violations, vacate orders, complaints, AEP, and 311 in parallel
-    const [violations, vacateOrders, complaints, aepRaw, raw311] = await Promise.all([
+    // Fetch violations, vacate orders, complaints, AEP, 311, and pending notices in parallel
+    const [violations, vacateOrders, complaints, aepRaw, raw311, pendingNotices] = await Promise.all([
       safeFetch(
         `https://data.cityofnewyork.us/resource/wvxf-dwi5.json?bbl=${encodeURIComponent(bbl)}&$limit=2000&$where=${encodeURIComponent(whereClause)}`,
         "HPD Violations"
@@ -120,6 +122,10 @@ export async function GET(request: NextRequest) {
       safeFetch(
         `https://data.cityofnewyork.us/resource/erm2-nwe9.json?$where=bbl='${bbl}' AND agency!='HPD'&$limit=200`,
         "311 Service Requests"
+      ),
+      safeFetch(
+        `https://data.cityofnewyork.us/resource/wvxf-dwi5.json?bbl=${encodeURIComponent(bbl)}&$limit=2000&$where=${encodeURIComponent("currentstatus='NOV SENT OUT'")}`,
+        "Pending Notices"
       ),
     ]);
 
@@ -461,6 +467,8 @@ export async function GET(request: NextRequest) {
       registration_contacts: mappedContacts,
       aep_status: mappedAep,
       service_requests_311: mapped311,
+      pending_notice_count: pendingNotices.length,
+      pending_notices_by_date: pendingNotices.map((v) => v.inspectiondate || null),
       address_label: addressLabel,
       nta: nta,
       cached_at: new Date().toISOString(),

@@ -83,6 +83,8 @@ export interface PropertyResponse {
   cached_at: string;
   aep_status?: AepEntry[];
   service_requests_311?: ServiceRequest311[];
+  pending_notice_count?: number;
+  pending_notices_by_date?: (string | null)[];
   from_cache: boolean;
   address_label?: string;
   nta?: string | null;

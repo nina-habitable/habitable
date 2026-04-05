@@ -448,6 +448,13 @@ function PropertyContent({ bbl }: { bbl: string }) {
 
   const open311 = useMemo(() => filtered311.filter((r) => r.status?.toLowerCase() === "open").length, [filtered311]);
 
+  const pendingNoticeCount = useMemo(() => {
+    const dates = propertyData?.pending_notices_by_date ?? [];
+    if (dates.length === 0) return 0;
+    if (timeframe === "all") return dates.length;
+    return dates.filter((d) => d && isRecent(d)).length;
+  }, [propertyData, timeframe]);
+
   const landlordQuestions = useMemo(() => generateQuestions(mappedViolations), [mappedViolations]);
 
   const classCount = (cls: string) => filteredViolations.filter((v) => v.class === cls).length;
@@ -672,6 +679,9 @@ function PropertyContent({ bbl }: { bbl: string }) {
                   <p className="text-xs text-[var(--muted)] leading-relaxed mt-3">
                     Most common {timeframe === "recent" ? "recent " : ""}issues: {topCategories.map((c) => `${c.count} ${c.title.toLowerCase()}`).join(", ")}.
                   </p>
+                )}
+                {pendingNoticeCount > 0 && (
+                  <p className="text-xs text-[var(--muted)] leading-relaxed mt-2">There {pendingNoticeCount === 1 ? "is" : "are"} also {pendingNoticeCount} notice{pendingNoticeCount === 1 ? "" : "s"} pending inspection.</p>
                 )}
                 {summary.olderNote && timeframe === "recent" && (
                   <p className="text-xs text-[var(--muted-dim)] leading-relaxed mt-2">{summary.olderNote}</p>
