@@ -706,6 +706,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
             {/* Violation class breakdown */}
             {filteredViolations.length > 0 && (
               <div>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">Open Violations</h3>
                 <div className="grid grid-cols-5 gap-2">
                   <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-3 text-center">
                     <p className="text-xl font-bold text-[var(--foreground)]">{filteredViolations.length}</p>
@@ -788,7 +789,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
             {/* Other Agency Reports (311) */}
             {filtered311.length > 0 && (
               <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-4 py-3">
-                <p className="text-xs text-[var(--muted-dim)] mb-0.5">Other agency reports ({timeframeLabel})</p>
+                <p className="text-xs text-[var(--muted-dim)] mb-0.5">311 Reports ({timeframeLabel})</p>
                 <p className="text-lg font-bold text-[var(--foreground)]">{filtered311.length}</p>
                 {filtered311.length > 0 && (
                   <p className="text-[10px] text-[var(--muted-dim)]">
@@ -799,7 +800,10 @@ function PropertyContent({ bbl }: { bbl: string }) {
                 )}
                 {agencyBreakdown311.length > 0 && (
                   <p className="text-[10px] text-[var(--muted-dim)] mt-1">
-                    {agencyBreakdown311.map((a) => `${a.agency} (${a.count})`).join(", ")}
+                    {agencyBreakdown311.map((a) => {
+                      const names: Record<string, string> = { DOB: "Dept. of Buildings", FDNY: "Fire Dept.", DEP: "Environmental Protection", DOHMH: "Health Dept." };
+                      return `${names[a.agency] || a.agency} (${a.count})`;
+                    }).join(", ")}
                   </p>
                 )}
               </div>
