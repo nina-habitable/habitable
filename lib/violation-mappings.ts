@@ -562,6 +562,7 @@ export function generatePropertySummary(
   complaintCount: number,
   litigationCount: number,
   hasVacateOrder: boolean,
+  openComplaintCount?: number,
 ): PropertySummary {
 
   const { recent, older } = splitByRecency(violations);
@@ -597,13 +598,17 @@ export function generatePropertySummary(
   // ═══════════════════════════════════════════
   // Generate headline + details based on RECENT data
   // ═══════════════════════════════════════════
+  const complaintText = complaintCount > 0
+    ? `${complaintCount} complaint${complaintCount === 1 ? '' : 's'}${openComplaintCount !== undefined && openComplaintCount > 0 ? ` (${openComplaintCount} still open)` : ''}`
+    : null;
+
   let headline: string;
   let details: string;
 
   if (severityLevel === "clean") {
     headline = "No violations in the last 2 years. This building has a clean recent record.";
     if (complaintCount > 0) {
-      details = `No recent housing code violations on file.${complaintCount > 0 ? ` There have been ${complaintCount} tenant complaint${complaintCount === 1 ? '' : 's'} recently — complaints don't always lead to violations but are worth noting.` : ''} Overall, this is a positive sign.`;
+      details = `No recent housing code violations on file.${complaintText ? ` Tenants have filed ${complaintText} recently — complaints don't always lead to violations but are worth noting.` : ''} Overall, this is a positive sign.`;
     } else {
       details = "No recent housing code violations or tenant complaints on file. This is a positive sign — but it's always worth talking to current tenants about their experience.";
     }
@@ -615,7 +620,7 @@ export function generatePropertySummary(
   } else if (severityLevel === "moderate") {
     headline = `${recentCount} violations in the last 2 years.`;
     const topIssues = getTopIssueCategories(recentMapped);
-    details = `The most common recent issues are ${topIssues}. ${recentClassC} ${recentClassC === 1 ? 'is' : 'are'} Class C (immediately hazardous — landlord had 24 hours to fix).${complaintCount > 0 ? ` Tenants have also filed ${complaintCount} complaint${complaintCount === 1 ? '' : 's'}.` : ''} Ask the landlord specifically what's been done about these.`;
+    details = `The most common recent issues are ${topIssues}. ${recentClassC} ${recentClassC === 1 ? 'is' : 'are'} Class C (immediately hazardous — landlord had 24 hours to fix).${complaintText ? ` Tenants have also filed ${complaintText}.` : ''} Ask the landlord specifically what's been done about these.`;
   } else if (severityLevel === "serious") {
     headline = `${recentCount} violations in the last 2 years — a troubled recent record.`;
     const topIssues = getTopIssueCategories(recentMapped);
@@ -625,7 +630,7 @@ export function generatePropertySummary(
     headline = hasVacateOrder
       ? "HPD has issued a vacate order for this building. This means conditions were found uninhabitable."
       : `${recentCount} violations in the last 2 years — a severely troubled record.`;
-    details = `${recentClassC} are Class C (immediately hazardous) and ${recentClassB} are Class B (hazardous).${complaintCount > 0 ? ` Tenants have filed ${complaintCount} complaint${complaintCount === 1 ? '' : 's'}.` : ''}${litigationCount > 0 ? ` HPD has ${litigationCount} active litigation case${litigationCount === 1 ? '' : 's'}.` : ''} This building shows a pattern of serious neglect. Proceed with extreme caution.`;
+    details = `${recentClassC} are Class C (immediately hazardous) and ${recentClassB} are Class B (hazardous).${complaintText ? ` Tenants have filed ${complaintText}.` : ''}${litigationCount > 0 ? ` HPD has ${litigationCount} active litigation case${litigationCount === 1 ? '' : 's'}.` : ''} This building shows a pattern of serious neglect. Proceed with extreme caution.`;
   }
 
   // ═══════════════════════════════════════════

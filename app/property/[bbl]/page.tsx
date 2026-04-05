@@ -182,18 +182,24 @@ function ComplaintCard({ complaint }: { complaint: Complaint }) {
         <h3 className="font-semibold text-[var(--foreground)] text-sm leading-snug">
           {titleCase(complaint.major_category || "Complaint")}
         </h3>
-        {complaint.type && (
-          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${complaint.type === "EMERGENCY" ? "bg-[#3D1414] text-[#FF4D4D]" : "bg-[var(--card-border)] text-[var(--muted)]"}`}>
-            {complaint.type}
-          </span>
-        )}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {complaint.complaint_status && (
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${complaint.complaint_status.toUpperCase() === "OPEN" ? "bg-[#3D2E0A] text-[#FFB020]" : "bg-[var(--card-border)] text-[var(--muted)]"}`}>
+              {titleCase(complaint.complaint_status)}
+            </span>
+          )}
+          {complaint.type && (
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${complaint.type === "EMERGENCY" ? "bg-[#3D1414] text-[#FF4D4D]" : "bg-[var(--card-border)] text-[var(--muted)]"}`}>
+              {complaint.type}
+            </span>
+          )}
+        </div>
       </div>
       {complaint.minor_category && (
         <p className="text-xs text-[var(--muted)] mb-1">{titleCase(complaint.minor_category)}</p>
       )}
       <div className="flex items-center gap-3 text-[10px] text-[var(--muted-dim)]">
         <span>{formatDate(complaint.received_date)}</span>
-        {complaint.complaint_status && <span>{titleCase(complaint.complaint_status)}</span>}
       </div>
     </div>
   );
@@ -341,7 +347,8 @@ function PropertyContent({ bbl }: { bbl: string }) {
       })),
       propertyData.complaint_count,
       propertyData.litigations.length,
-      propertyData.vacate_orders.some((v) => !v.rescind_date)
+      propertyData.vacate_orders.some((v) => !v.rescind_date),
+      propertyData.complaints.filter((c) => c.complaint_status?.toUpperCase() === "OPEN").length
     );
   }, [propertyData, timeframe]);
 
@@ -361,9 +368,13 @@ function PropertyContent({ bbl }: { bbl: string }) {
     return new Set(filteredComplaints.map((c) => c.complaint_id)).size;
   }, [filteredComplaints]);
 
-  const emergencyCount = useMemo(() =>
-    filteredComplaints.filter((c) => c.type === "EMERGENCY").length,
+  const openComplaintCount = useMemo(() =>
+    filteredComplaints.filter((c) => c.complaint_status?.toUpperCase() === "OPEN").length,
     [filteredComplaints]
+  );
+  const closedComplaintCount = useMemo(() =>
+    filteredComplaints.length - openComplaintCount,
+    [filteredComplaints, openComplaintCount]
   );
 
   const filteredLitigations = useMemo(() => {
@@ -668,13 +679,14 @@ function PropertyContent({ bbl }: { bbl: string }) {
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-4 py-3">
                 <p className="text-xs text-[var(--muted-dim)] mb-0.5">Complaints ({timeframeLabel})</p>
-                <p className="text-lg font-bold text-[var(--foreground)]">
-                  {filteredComplaintCount}
-                  {filteredComplaints.length !== filteredComplaintCount && (
-                    <span className="text-xs font-normal text-[var(--muted-dim)] ml-1">({filteredComplaints.length} issues)</span>
-                  )}
-                </p>
-                {emergencyCount > 0 && <p className="text-[10px] text-[#FF4D4D]">{emergencyCount} emergency</p>}
+                <p className="text-lg font-bold text-[var(--foreground)]">{filteredComplaintCount}</p>
+                {filteredComplaintCount > 0 && (
+                  <p className="text-[10px] text-[var(--muted-dim)]">
+                    {openComplaintCount > 0 && <span className="text-[#FFB020]">{openComplaintCount} open</span>}
+                    {openComplaintCount > 0 && closedComplaintCount > 0 && " · "}
+                    {closedComplaintCount > 0 && <span>{closedComplaintCount} closed</span>}
+                  </p>
+                )}
                 {complaintCategories.length > 0 && (
                   <p className="text-[10px] text-[var(--muted-dim)] mt-1">
                     {complaintCategories.slice(0, 3).map((c) => `${titleCase(c.category)} (${c.count})`).join(", ")}
@@ -684,7 +696,13 @@ function PropertyContent({ bbl }: { bbl: string }) {
               <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-4 py-3">
                 <p className="text-xs text-[var(--muted-dim)] mb-0.5">Litigation ({timeframeLabel})</p>
                 <p className="text-lg font-bold text-[var(--foreground)]">{filteredLitigations.length}</p>
-                {pendingLitigation > 0 && <p className="text-[10px] text-[#FFB020]">{pendingLitigation} pending</p>}
+                {filteredLitigations.length > 0 && (
+                  <p className="text-[10px] text-[var(--muted-dim)]">
+                    {pendingLitigation > 0 && <span className="text-[#FFB020]">{pendingLitigation} pending</span>}
+                    {pendingLitigation > 0 && (filteredLitigations.length - pendingLitigation) > 0 && " · "}
+                    {(filteredLitigations.length - pendingLitigation) > 0 && <span>{filteredLitigations.length - pendingLitigation} closed</span>}
+                  </p>
+                )}
                 {litigationTypes.length > 0 && (
                   <p className="text-[10px] text-[var(--muted-dim)] mt-1">
                     {litigationTypes.slice(0, 2).map((t) => `${titleCase(t.type)} (${t.count})`).join(", ")}
