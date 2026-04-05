@@ -267,6 +267,7 @@ export async function GET(request: NextRequest) {
         reason: v.primary_vacate_reason || null,
         effective_date: v.vacate_effective_date || null,
         units_vacated: v.number_of_vacated_units || null,
+        rescind_date: v.actual_rescind_date || null,
       }));
       writePromises.push(
         supabaseAdmin.from("vacate_orders").upsert(rows, { onConflict: "id" }).then(({ error }) => {
@@ -381,6 +382,7 @@ export async function GET(request: NextRequest) {
       reason: v.primary_vacate_reason || null,
       effective_date: v.vacate_effective_date || null,
       units_vacated: v.number_of_vacated_units || null,
+      rescind_date: v.actual_rescind_date || null,
     }));
 
     const mappedComplaints = complaints.map((v) => ({

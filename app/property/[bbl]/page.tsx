@@ -341,7 +341,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
       })),
       propertyData.complaint_count,
       propertyData.litigations.length,
-      propertyData.vacate_orders.length > 0
+      propertyData.vacate_orders.some((v) => !v.rescind_date)
     );
   }, [propertyData, timeframe]);
 
@@ -404,7 +404,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
   const buildingType = useMemo(() => {
     const lot = parseInt(bbl.slice(-4)) || 0;
     const corpName = (contacts.owner?.corporation_name || "").toUpperCase();
-    if (corpName.includes("HDFC") || corpName.includes("COOPERATIVE") || /APT(?:ARTMENT)?S?\s+CORP/.test(corpName)) return "Co-op";
+    if (corpName.includes("HDFC") || corpName.includes("COOPERATIVE") || /APT(?:ARTMENT)?S?\s+CORP/.test(corpName) || corpName.includes("OWNERS CORP") || corpName.includes("APARTMENT OWNERS") || corpName.includes("TENANTS CORP")) return "Co-op";
     if (corpName.includes("HOA") || corpName.includes("CONDO") || corpName.includes("CONDOMINIUM")) return "Condo";
     if (lot >= 7500) return "Condo / co-op";
     return null;
@@ -536,15 +536,30 @@ function PropertyContent({ bbl }: { bbl: string }) {
             )}
 
             {/* Vacate order banner */}
-            {propertyData.vacate_orders.length > 0 && (
-              <div className="rounded-xl border-2 border-red-700 bg-red-950 p-5">
-                <p className="text-base font-bold text-red-400 mb-1">Active Vacate Order</p>
-                <p className="text-sm text-red-300">HPD has declared conditions in this building uninhabitable. Reason: {propertyData.vacate_orders[0].reason ?? "Not specified"}</p>
-                {propertyData.vacate_orders[0].effective_date && (
-                  <p className="text-xs text-red-400/70 mt-1">Effective {formatDate(propertyData.vacate_orders[0].effective_date)} · {propertyData.vacate_orders[0].units_vacated ?? "?"} units vacated</p>
-                )}
-              </div>
-            )}
+            {(() => {
+              const activeVacate = propertyData.vacate_orders.filter((v) => !v.rescind_date);
+              const rescindedVacate = propertyData.vacate_orders.filter((v) => v.rescind_date);
+              return (
+                <>
+                  {activeVacate.length > 0 && (
+                    <div className="rounded-xl border-2 border-red-700 bg-red-950 p-5">
+                      <p className="text-base font-bold text-red-400 mb-1">Active Vacate Order</p>
+                      <p className="text-sm text-red-300">HPD has declared conditions in this building uninhabitable. Reason: {activeVacate[0].reason ?? "Not specified"}</p>
+                      {activeVacate[0].effective_date && (
+                        <p className="text-xs text-red-400/70 mt-1">Effective {formatDate(activeVacate[0].effective_date)} · {activeVacate[0].units_vacated ?? "?"} units vacated</p>
+                      )}
+                    </div>
+                  )}
+                  {activeVacate.length === 0 && rescindedVacate.length > 0 && (
+                    <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-3">
+                      <p className="text-sm text-[var(--muted)]">
+                        A vacate order was previously issued for this building (reason: {rescindedVacate[0].reason ?? "not specified"}, issued {formatDate(rescindedVacate[0].effective_date)}, rescinded {formatDate(rescindedVacate[0].rescind_date)}).
+                      </p>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             {/* AEP Watchlist Banner */}
             {(() => {

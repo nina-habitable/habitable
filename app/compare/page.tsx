@@ -171,7 +171,7 @@ function BuildingCard({
     })),
     propertyData.complaint_count,
     propertyData.litigations.length,
-    propertyData.vacate_orders.length > 0
+    propertyData.vacate_orders.some((v) => !v.rescind_date)
   );
 
   const severity = SEVERITY_COLORS[summary.severityLevel] ?? SEVERITY_COLORS.moderate;

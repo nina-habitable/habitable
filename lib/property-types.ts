@@ -15,6 +15,7 @@ export interface VacateOrder {
   reason: string | null;
   effective_date: string | null;
   units_vacated: string | null;
+  rescind_date: string | null;
 }
 
 export interface Complaint {
