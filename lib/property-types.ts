@@ -82,9 +82,24 @@ export interface PropertyResponse {
   registration_contacts?: RegistrationContact[];
   cached_at: string;
   aep_status?: AepEntry[];
+  service_requests_311?: ServiceRequest311[];
   from_cache: boolean;
   address_label?: string;
   nta?: string | null;
+}
+
+export interface ServiceRequest311 {
+  id: string;
+  bbl: string;
+  unique_key: string;
+  agency: string | null;
+  agency_name: string | null;
+  complaint_type: string | null;
+  descriptor: string | null;
+  status: string | null;
+  created_date: string | null;
+  closed_date: string | null;
+  resolution_description: string | null;
 }
 
 export interface AepEntry {

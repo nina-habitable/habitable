@@ -14,6 +14,7 @@ import type {
   Complaint,
   Litigation,
   BedbugReport,
+  ServiceRequest311,
   PropertyResponse,
 } from "../../../lib/property-types";
 
@@ -226,6 +227,38 @@ function LitigationCard({ litigation }: { litigation: Litigation }) {
 }
 
 // Pagination component
+function ServiceRequestCard({ sr }: { sr: ServiceRequest311 }) {
+  const isOpen = sr.status?.toLowerCase() === "open";
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-4">
+      <div className="flex items-start justify-between gap-2 mb-1">
+        <h3 className="font-semibold text-[var(--foreground)] text-sm leading-snug">
+          {sr.complaint_type || "Service Request"}
+        </h3>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${isOpen ? "bg-[#3D2E0A] text-[#FFB020]" : "bg-[var(--card-border)] text-[var(--muted)]"}`}>
+            {isOpen ? "Open" : "Closed"}
+          </span>
+          <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-[var(--card-border)] text-[var(--muted)]">
+            {sr.agency}
+          </span>
+        </div>
+      </div>
+      {sr.descriptor && <p className="text-xs text-[var(--muted)] mb-1">{sr.descriptor}</p>}
+      <p className="text-[10px] text-[var(--muted-dim)]">{formatDate(sr.created_date)}{sr.agency_name ? ` · ${sr.agency_name}` : ""}</p>
+      {sr.resolution_description && (
+        <div className="mt-1">
+          <p className={`text-[10px] text-[var(--muted-dim)] ${!expanded ? "line-clamp-2" : ""}`}>{sr.resolution_description}</p>
+          {sr.resolution_description.length > 120 && (
+            <button onClick={() => setExpanded(!expanded)} className="text-[10px] text-[var(--muted)] hover:text-[var(--foreground)]">{expanded ? "Show less" : "Show more"}</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PaginatedList<T>({
   items,
   renderItem,
@@ -277,7 +310,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
   const [error, setError] = useState("");
   const [visibleCount, setVisibleCount] = useState(10);
   const [timeframe, setTimeframe] = useState<"recent" | "all">("recent");
-  const [activeTab, setActiveTab] = useState<"violations" | "complaints" | "litigation">("violations");
+  const [activeTab, setActiveTab] = useState<"violations" | "complaints" | "litigation" | "311">("violations");
 
   useEffect(() => {
     async function load() {
@@ -395,6 +428,25 @@ function PropertyContent({ bbl }: { bbl: string }) {
     if (timeframe === "all") return sorted;
     return sorted.filter((r) => r.filing_date && new Date(r.filing_date) >= twoYearsAgo);
   }, [propertyData, timeframe]);
+
+  const filtered311 = useMemo(() => {
+    const all = propertyData?.service_requests_311 ?? [];
+    if (all.length === 0) return [] as ServiceRequest311[];
+    const sorted = [...all].sort((a, b) => (b.created_date ?? "").localeCompare(a.created_date ?? ""));
+    if (timeframe === "all") return sorted;
+    return sorted.filter((r) => isRecent(r.created_date));
+  }, [propertyData, timeframe]);
+
+  const agencyBreakdown311 = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const r of filtered311) {
+      const a = r.agency || "Other";
+      counts[a] = (counts[a] || 0) + 1;
+    }
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([agency, count]) => ({ agency, count }));
+  }, [filtered311]);
+
+  const open311 = useMemo(() => filtered311.filter((r) => r.status?.toLowerCase() === "open").length, [filtered311]);
 
   const landlordQuestions = useMemo(() => generateQuestions(mappedViolations), [mappedViolations]);
 
@@ -733,12 +785,32 @@ function PropertyContent({ bbl }: { bbl: string }) {
               );
             })()}
 
+            {/* Other Agency Reports (311) */}
+            {filtered311.length > 0 && (
+              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-4 py-3">
+                <p className="text-xs text-[var(--muted-dim)] mb-0.5">Other agency reports ({timeframeLabel})</p>
+                <p className="text-lg font-bold text-[var(--foreground)]">{filtered311.length}</p>
+                {filtered311.length > 0 && (
+                  <p className="text-[10px] text-[var(--muted-dim)]">
+                    {open311 > 0 && <span className="text-[#FFB020]">{open311} open</span>}
+                    {open311 > 0 && (filtered311.length - open311) > 0 && " · "}
+                    {(filtered311.length - open311) > 0 && <span>{filtered311.length - open311} closed</span>}
+                  </p>
+                )}
+                {agencyBreakdown311.length > 0 && (
+                  <p className="text-[10px] text-[var(--muted-dim)] mt-1">
+                    {agencyBreakdown311.map((a) => `${a.agency} (${a.count})`).join(", ")}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* ─── Deep Dive Tabs ─── */}
             <div>
-              <div className="flex items-center gap-1 bg-[var(--card)] rounded-lg p-1 border border-[var(--card-border)] w-fit mb-4">
-                {(["violations", "complaints", "litigation"] as const).map((tab) => (
-                  <button key={tab} onClick={() => setActiveTab(tab)} className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors capitalize ${activeTab === tab ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}>
-                    {tab === "violations" ? `Violations (${filteredViolations.length})` : tab === "complaints" ? `Complaints (${filteredComplaints.length})` : `Litigation (${filteredLitigations.length})`}
+              <div className="flex items-center gap-1 bg-[var(--card)] rounded-lg p-1 border border-[var(--card-border)] w-fit mb-4 flex-wrap">
+                {(["violations", "complaints", "litigation", "311"] as const).map((tab) => (
+                  <button key={tab} onClick={() => setActiveTab(tab)} className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${activeTab === tab ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}>
+                    {tab === "violations" ? `Violations (${filteredViolations.length})` : tab === "complaints" ? `Complaints (${filteredComplaints.length})` : tab === "litigation" ? `Litigation (${filteredLitigations.length})` : `311 Reports (${filtered311.length})`}
                   </button>
                 ))}
               </div>
@@ -812,6 +884,16 @@ function PropertyContent({ bbl }: { bbl: string }) {
                   </div>
                 )
               )}
+
+              {activeTab === "311" && (
+                filtered311.length > 0 ? (
+                  <PaginatedList items={filtered311} keyFn={(r) => r.id} renderItem={(r) => <ServiceRequestCard sr={r} />} />
+                ) : (
+                  <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5 text-center">
+                    <p className="text-sm text-[var(--muted)]">No 311 service requests {timeframe === "recent" ? "in the last 2 years" : "on record"}.</p>
+                  </div>
+                )
+              )}
             </div>
 
             {/* Data freshness + disclaimer */}
@@ -820,7 +902,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
                 {propertyData.from_cache ? "Cached" : "Last updated"}: {formatDate(propertyData.cached_at)}
               </div>
               <p className="text-center text-[10px] text-[var(--muted-dim)]">
-                This report covers HPD housing code violations, complaints, and litigation only. Some issues (gas, fire safety, DOB) are tracked by other agencies.
+                This report covers HPD violations, complaints, litigation, and 311 service requests (DOB, FDNY, DEP, DOHMH).
               </p>
               <p className="text-center text-[10px] text-[var(--muted-dim)]">
                 Data source:{" "}
