@@ -73,8 +73,6 @@ export async function GET(request: NextRequest) {
         registration_contacts: cachedContacts.data ?? [],
         aep_status: cachedAep.data ?? [],
         service_requests_311: cached311.data ?? [],
-        pending_notice_count: 0,
-        pending_notices_by_date: [],
         address_label: cachedAddress,
         nta: cachedProperty.data?.nta ?? null,
         cached_at: cached[0].created_at,
@@ -82,29 +80,13 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Excluded statuses (closed, resolved, dismissed, or pre-inspection):
-    //   VIOLATION CLOSED, VIOLATION DISMISSED, NOV CERTIFIED LATE,
-    //   NOV CERTIFIED ON TIME, INFO NOV SENT OUT, LEAD DOCS SUBMITTED ACCEPTABLE,
-    //   NOV SENT OUT, NOTICE OF ISSUANCE SENT TO TENANT, CERTIFICATION POSTPONEMENT GRANTED
-    const whereClause = [
-      "currentstatus!='VIOLATION CLOSED'",
-      "currentstatus!='VIOLATION DISMISSED'",
-      "currentstatus!='NOV CERTIFIED LATE'",
-      "currentstatus!='NOV CERTIFIED ON TIME'",
-      "currentstatus!='INFO NOV SENT OUT'",
-      "currentstatus!='LEAD DOCS SUBMITTED, ACCEPTABLE'",
-      "currentstatus!='NOV SENT OUT'",
-      "currentstatus!='NOTICE OF ISSUANCE SENT TO TENANT'",
-      "currentstatus!='CERTIFICATION POSTPONEMENT GRANTED'",
-    ].join(" AND ");
-
     const appToken = process.env.NYC_OPEN_DATA_APP_TOKEN || "";
     const twoYearsAgo = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-    // Fetch violations, vacate orders, complaints, AEP, 311, and pending notices in parallel
-    const [violations, vacateOrders, complaints, aepRaw, raw311, pendingNotices] = await Promise.all([
+    // Fetch ALL violations (no status filter — frontend filters open vs pending)
+    const [violations, vacateOrders, complaints, aepRaw, raw311] = await Promise.all([
       safeFetch(
-        `https://data.cityofnewyork.us/resource/wvxf-dwi5.json?bbl=${encodeURIComponent(bbl)}&$limit=2000&$where=${encodeURIComponent(whereClause)}`,
+        `https://data.cityofnewyork.us/resource/wvxf-dwi5.json?bbl=${encodeURIComponent(bbl)}&$limit=5000`,
         "HPD Violations"
       ),
       safeFetch(
@@ -122,10 +104,6 @@ export async function GET(request: NextRequest) {
       safeFetch(
         `https://data.cityofnewyork.us/resource/erm2-nwe9.json?$where=bbl='${bbl}' AND agency!='HPD'&$limit=200`,
         "311 Service Requests"
-      ),
-      safeFetch(
-        `https://data.cityofnewyork.us/resource/wvxf-dwi5.json?bbl=${encodeURIComponent(bbl)}&$limit=2000&$where=${encodeURIComponent("currentstatus='NOV SENT OUT'")}`,
-        "Pending Notices"
       ),
     ]);
 
@@ -467,8 +445,6 @@ export async function GET(request: NextRequest) {
       registration_contacts: mappedContacts,
       aep_status: mappedAep,
       service_requests_311: mapped311,
-      pending_notice_count: pendingNotices.length,
-      pending_notices_by_date: pendingNotices.map((v) => v.inspectiondate || null),
       address_label: addressLabel,
       nta: nta,
       cached_at: new Date().toISOString(),

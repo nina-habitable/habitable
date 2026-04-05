@@ -42,6 +42,24 @@ function isRecent(dateStr: string | null): boolean {
   return dateStr >= twoYearsAgoISO;
 }
 
+// Statuses that are NOT open violations (closed, resolved, dismissed, or pre-inspection)
+const CLOSED_STATUSES = new Set([
+  "VIOLATION CLOSED", "VIOLATION DISMISSED", "NOV CERTIFIED LATE",
+  "NOV CERTIFIED ON TIME", "INFO NOV SENT OUT", "LEAD DOCS SUBMITTED, ACCEPTABLE",
+  "NOTICE OF ISSUANCE SENT TO TENANT", "CERTIFICATION POSTPONEMENT GRANTED",
+]);
+const PENDING_STATUS = "NOV SENT OUT";
+
+function isOpenViolation(status: string | null): boolean {
+  if (!status) return true;
+  const upper = status.toUpperCase();
+  return upper !== PENDING_STATUS && !CLOSED_STATUSES.has(upper);
+}
+
+function isPendingNotice(status: string | null): boolean {
+  return status?.toUpperCase() === PENDING_STATUS;
+}
+
 function titleCase(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
@@ -354,11 +372,24 @@ function PropertyContent({ bbl }: { bbl: string }) {
   }
 
   // ─── Derived data ───
-  const filteredViolations = useMemo(() => {
+  // All violations filtered by timeframe (includes all statuses)
+  const timeframeViolations = useMemo(() => {
     if (!propertyData) return [];
     if (timeframe === "all") return propertyData.violations;
     return propertyData.violations.filter((v) => isRecent(v.inspectiondate));
   }, [propertyData, timeframe]);
+
+  // Open violations only (excludes closed, dismissed, and pending)
+  const filteredViolations = useMemo(() =>
+    timeframeViolations.filter((v) => isOpenViolation(v.status)),
+    [timeframeViolations]
+  );
+
+  // Pending notices (NOV SENT OUT)
+  const pendingNoticeCount = useMemo(() =>
+    timeframeViolations.filter((v) => isPendingNotice(v.status)).length,
+    [timeframeViolations]
+  );
 
   const sortedViolations = useMemo(() =>
     [...filteredViolations].sort((a, b) => (b.inspectiondate ?? "").localeCompare(a.inspectiondate ?? "")),
@@ -370,10 +401,16 @@ function PropertyContent({ bbl }: { bbl: string }) {
     [sortedViolations]
   );
 
+  // Summary uses only open violations (status-filtered)
+  const openViolationsForSummary = useMemo(() =>
+    (propertyData?.violations ?? []).filter((v) => isOpenViolation(v.status)),
+    [propertyData]
+  );
+
   const summary = useMemo(() => {
     if (!propertyData) return null;
     return generatePropertySummary(
-      propertyData.violations.map((v) => ({
+      openViolationsForSummary.map((v) => ({
         class: v.class,
         novdescription: v.novdescription ?? "",
         inspectiondate: timeframe === "all" ? (v.inspectiondate ?? new Date().toISOString()) : (v.inspectiondate ?? undefined),
@@ -383,7 +420,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
       propertyData.vacate_orders.some((v) => !v.rescind_date),
       propertyData.complaints.filter((c) => c.complaint_status?.toUpperCase() === "OPEN").length
     );
-  }, [propertyData, timeframe]);
+  }, [propertyData, openViolationsForSummary, timeframe]);
 
   const topCategories = useMemo(() => getTopCategories(mappedViolations), [mappedViolations]);
 
@@ -448,12 +485,6 @@ function PropertyContent({ bbl }: { bbl: string }) {
 
   const open311 = useMemo(() => filtered311.filter((r) => r.status?.toLowerCase() === "open").length, [filtered311]);
 
-  const pendingNoticeCount = useMemo(() => {
-    const dates = propertyData?.pending_notices_by_date ?? [];
-    if (dates.length === 0) return 0;
-    if (timeframe === "all") return dates.length;
-    return dates.filter((d) => d && isRecent(d)).length;
-  }, [propertyData, timeframe]);
 
   const landlordQuestions = useMemo(() => generateQuestions(mappedViolations), [mappedViolations]);
 
