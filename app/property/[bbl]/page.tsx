@@ -42,22 +42,16 @@ function isRecent(dateStr: string | null): boolean {
   return dateStr >= twoYearsAgoISO;
 }
 
-// Statuses that are NOT open violations (closed, resolved, dismissed, or pre-inspection)
+// Statuses that are NOT open violations (closed, resolved, or dismissed)
 const CLOSED_STATUSES = new Set([
   "VIOLATION CLOSED", "VIOLATION DISMISSED", "NOV CERTIFIED LATE",
   "NOV CERTIFIED ON TIME", "INFO NOV SENT OUT", "LEAD DOCS SUBMITTED, ACCEPTABLE",
-  "NOTICE OF ISSUANCE SENT TO TENANT", "CERTIFICATION POSTPONEMENT GRANTED",
+  "CERTIFICATION POSTPONEMENT GRANTED",
 ]);
-const PENDING_STATUS = "NOV SENT OUT";
 
 function isOpenViolation(status: string | null): boolean {
   if (!status) return true;
-  const upper = status.toUpperCase();
-  return upper !== PENDING_STATUS && !CLOSED_STATUSES.has(upper);
-}
-
-function isPendingNotice(status: string | null): boolean {
-  return status?.toUpperCase() === PENDING_STATUS;
+  return !CLOSED_STATUSES.has(status.toUpperCase());
 }
 
 function titleCase(s: string) {
@@ -385,11 +379,6 @@ function PropertyContent({ bbl }: { bbl: string }) {
     [timeframeViolations]
   );
 
-  // Pending notices (NOV SENT OUT)
-  const pendingNoticeCount = useMemo(() =>
-    timeframeViolations.filter((v) => isPendingNotice(v.status)).length,
-    [timeframeViolations]
-  );
 
   const sortedViolations = useMemo(() =>
     [...filteredViolations].sort((a, b) => (b.inspectiondate ?? "").localeCompare(a.inspectiondate ?? "")),
@@ -710,9 +699,6 @@ function PropertyContent({ bbl }: { bbl: string }) {
                   <p className="text-xs text-[var(--muted)] leading-relaxed mt-3">
                     Most common {timeframe === "recent" ? "recent " : ""}issues: {topCategories.map((c) => `${c.count} ${c.title.toLowerCase()}`).join(", ")}.
                   </p>
-                )}
-                {pendingNoticeCount > 0 && (
-                  <p className="text-xs text-[var(--muted)] leading-relaxed mt-2">There {pendingNoticeCount === 1 ? "is" : "are"} also {pendingNoticeCount} notice{pendingNoticeCount === 1 ? "" : "s"} pending inspection.</p>
                 )}
                 {summary.olderNote && timeframe === "recent" && (
                   <p className="text-xs text-[var(--muted-dim)] leading-relaxed mt-2">{summary.olderNote}</p>
