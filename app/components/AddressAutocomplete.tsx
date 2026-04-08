@@ -29,15 +29,22 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Click outside to close
+  // Click outside or Escape to close
   useEffect(() => {
     function onClick(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setShowDropdown(false);
       }
     }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowDropdown(false);
+    }
     document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   // Debounced autocomplete fetch
@@ -73,14 +80,22 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
           .filter((s: Suggestion) => !borough || s.borough === borough);
 
         // Extract street prefix from input (after house number) for prioritization
-        const streetPrefix = address.trim().toUpperCase().replace(/^\d+\s*/, "").trim();
+        const streetPrefix = address.trim().toUpperCase().replace(/^\d+[-\d]*\s*/, "").trim();
         if (streetPrefix.length > 0) {
+          // Score: 0 = street starts with prefix, 1 = contains prefix, 2 = neither
+          const score = (s: Suggestion) => {
+            const street = s.name.toUpperCase().replace(/^\d+[-\d]*\s*/, "").trim();
+            if (street.startsWith(streetPrefix)) return 0;
+            if (street.includes(streetPrefix)) return 1;
+            return 2;
+          };
           results.sort((a: Suggestion, b: Suggestion) => {
-            const aName = a.name.toUpperCase().replace(/^\d+\s*/, "");
-            const bName = b.name.toUpperCase().replace(/^\d+\s*/, "");
-            const aStarts = aName.startsWith(streetPrefix) ? 0 : 1;
-            const bStarts = bName.startsWith(streetPrefix) ? 0 : 1;
-            return aStarts - bStarts;
+            const sa = score(a), sb = score(b);
+            if (sa !== sb) return sa - sb;
+            // Within same group, sort alphabetically by street name
+            const aStreet = a.name.toUpperCase().replace(/^\d+[-\d]*\s*/, "");
+            const bStreet = b.name.toUpperCase().replace(/^\d+[-\d]*\s*/, "");
+            return aStreet.localeCompare(bStreet);
           });
         }
 
@@ -97,11 +112,15 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setSuggestions([]);
     setShowDropdown(false);
     onSubmit({ address: address.trim(), borough });
   }
 
   function handleSelect(s: Suggestion) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setSuggestions([]);
     setShowDropdown(false);
     setAddress(s.name);
     onSelect(s);
