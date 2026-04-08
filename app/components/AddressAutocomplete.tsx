@@ -26,6 +26,7 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -115,6 +116,7 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
         }
 
         setSuggestions(parsed.slice(0, 8));
+        setHighlightIndex(-1);
         setShowDropdown(parsed.length > 0);
       } catch (e) {
         if ((e as Error).name !== "AbortError") {
@@ -169,8 +171,22 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
             // Immediately clear stale results so they don't flash while debouncing
             if (abortRef.current) abortRef.current.abort();
             setSuggestions([]);
+            setHighlightIndex(-1);
             setShowDropdown(false);
             setAddress(e.target.value);
+          }}
+          onKeyDown={(e) => {
+            if (!showDropdown || suggestions.length === 0) return;
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setHighlightIndex((prev) => Math.min(prev + 1, suggestions.length - 1));
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setHighlightIndex((prev) => Math.max(prev - 1, -1));
+            } else if (e.key === "Enter" && highlightIndex >= 0) {
+              e.preventDefault();
+              handleSelect(suggestions[highlightIndex]);
+            }
           }}
           onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
           placeholder="Enter address (e.g., 553 Howard Ave, Brooklyn)"
@@ -191,12 +207,13 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
       {showDropdown && suggestions.length > 0 && (
         <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-[var(--card-border)] bg-[var(--card)] shadow-lg overflow-hidden">
           {loading && <div className="px-4 py-2 text-xs text-[var(--muted-dim)]">Loading...</div>}
-          {suggestions.map((s) => (
+          {suggestions.map((s, i) => (
             <button
               key={s.bbl}
               type="button"
               onClick={() => handleSelect(s)}
-              className="w-full text-left px-4 py-2.5 hover:bg-[var(--background)] border-b border-[var(--card-border)] last:border-b-0 transition-colors"
+              onMouseEnter={() => setHighlightIndex(i)}
+              className={`w-full text-left px-4 py-2.5 border-b border-[var(--card-border)] last:border-b-0 transition-colors ${i === highlightIndex ? "bg-[var(--background)]" : "hover:bg-[var(--background)]"}`}
             >
               <p className="text-sm text-[var(--foreground)]">{s.name}</p>
               <p className="text-[10px] text-[var(--muted-dim)]">
