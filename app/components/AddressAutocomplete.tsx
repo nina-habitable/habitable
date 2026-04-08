@@ -28,8 +28,8 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
   const [showDropdown, setShowDropdown] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
-  const skipNextFetchRef = useRef(false);
-  const latestInputRef = useRef("");
+  const abortRef = useRef<AbortController | null>(null);
+  const userTypedRef = useRef(false);
 
   // Click outside or Escape to close
   useEffect(() => {
@@ -51,27 +51,30 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
 
   // Debounced autocomplete fetch
   useEffect(() => {
-    if (skipNextFetchRef.current) {
-      skipNextFetchRef.current = false;
-      return;
-    }
+    // Only fetch when the user has actually typed (not on mount or after selection)
+    if (!userTypedRef.current) return;
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (abortRef.current) abortRef.current.abort();
+
     if (address.trim().length < 3) {
       setSuggestions([]);
       setShowDropdown(false);
       return;
     }
     const currentInput = address;
-    latestInputRef.current = currentInput;
     debounceRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      abortRef.current = controller;
       setLoading(true);
       try {
-        const res = await fetch(`https://geosearch.planninglabs.nyc/v2/autocomplete?text=${encodeURIComponent(currentInput)}`);
-        // Ignore stale responses (user has typed more since this fetch started)
-        if (latestInputRef.current !== currentInput) return;
+        const res = await fetch(
+          `https://geosearch.planninglabs.nyc/v2/autocomplete?text=${encodeURIComponent(currentInput)}`,
+          { signal: controller.signal }
+        );
         if (!res.ok) throw new Error();
         const data = await res.json();
-        const results: Suggestion[] = (data.features || [])
+        const parsed: Suggestion[] = (data.features || [])
           .map((f: { properties: { name?: string; borough?: string; neighbourhood?: string; label?: string; addendum?: { pad?: { bbl?: string; bin?: string } } }; geometry?: { coordinates?: [number, number] } }) => {
             const bbl = f.properties.addendum?.pad?.bbl || "";
             const bin = f.properties.addendum?.pad?.bin || "";
@@ -90,29 +93,33 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
           .filter((s: Suggestion) => !borough || s.borough === borough);
 
         // Extract street prefix from input (after house number) for prioritization
-        const streetPrefix = address.trim().toUpperCase().replace(/^\d+[-\d]*\s*/, "").trim();
+        const streetPrefix = currentInput.trim().toUpperCase().replace(/^\d+[-\d]*\s*/, "").trim();
+        const stripHouse = (n: string) => n.toUpperCase().replace(/^\d+[-\d]*\s*/, "").trim();
+
         if (streetPrefix.length > 0) {
-          // Score: 0 = street starts with prefix, 1 = contains prefix, 2 = neither
           const score = (s: Suggestion) => {
-            const street = s.name.toUpperCase().replace(/^\d+[-\d]*\s*/, "").trim();
+            const street = stripHouse(s.name);
             if (street.startsWith(streetPrefix)) return 0;
             if (street.includes(streetPrefix)) return 1;
             return 2;
           };
-          results.sort((a: Suggestion, b: Suggestion) => {
+          parsed.sort((a: Suggestion, b: Suggestion) => {
             const sa = score(a), sb = score(b);
             if (sa !== sb) return sa - sb;
-            // Within same group, sort alphabetically by street name
-            const aStreet = a.name.toUpperCase().replace(/^\d+[-\d]*\s*/, "");
-            const bStreet = b.name.toUpperCase().replace(/^\d+[-\d]*\s*/, "");
+            // Within same group: shorter street name first (better match), then alphabetical
+            const aStreet = stripHouse(a.name);
+            const bStreet = stripHouse(b.name);
+            if (aStreet.length !== bStreet.length) return aStreet.length - bStreet.length;
             return aStreet.localeCompare(bStreet);
           });
         }
 
-        setSuggestions(results.slice(0, 8));
-        setShowDropdown(results.length > 0);
-      } catch {
-        setSuggestions([]);
+        setSuggestions(parsed.slice(0, 8));
+        setShowDropdown(parsed.length > 0);
+      } catch (e) {
+        if ((e as Error).name !== "AbortError") {
+          setSuggestions([]);
+        }
       } finally {
         setLoading(false);
       }
@@ -123,6 +130,8 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (abortRef.current) abortRef.current.abort();
+    userTypedRef.current = false;
     setSuggestions([]);
     setShowDropdown(false);
     onSubmit({ address: address.trim(), borough });
@@ -130,8 +139,8 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
 
   function handleSelect(s: Suggestion) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    skipNextFetchRef.current = true;
-    latestInputRef.current = s.name;
+    if (abortRef.current) abortRef.current.abort();
+    userTypedRef.current = false;
     setSuggestions([]);
     setShowDropdown(false);
     setAddress(s.name);
@@ -155,7 +164,7 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
         <input
           type="text"
           value={address}
-          onChange={(e) => setAddress(e.target.value)}
+          onChange={(e) => { userTypedRef.current = true; setAddress(e.target.value); }}
           onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
           placeholder="Enter address (e.g., 553 Howard Ave, Brooklyn)"
           autoComplete="off"
