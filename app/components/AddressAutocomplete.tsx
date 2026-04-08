@@ -164,7 +164,14 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
         <input
           type="text"
           value={address}
-          onChange={(e) => { userTypedRef.current = true; setAddress(e.target.value); }}
+          onChange={(e) => {
+            userTypedRef.current = true;
+            // Immediately clear stale results so they don't flash while debouncing
+            if (abortRef.current) abortRef.current.abort();
+            setSuggestions([]);
+            setShowDropdown(false);
+            setAddress(e.target.value);
+          }}
           onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
           placeholder="Enter address (e.g., 553 Howard Ave, Brooklyn)"
           autoComplete="off"
