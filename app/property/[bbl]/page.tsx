@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, FormEvent, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import AddressAutocomplete from "../../components/AddressAutocomplete";
 import {
   mapViolation,
   generatePropertySummary,
@@ -323,12 +324,11 @@ function PropertyContent({ bbl }: { bbl: string }) {
   const geoAddress = searchParams.get("address") || "";
   const geoBin = searchParams.get("bin") || "";
   const geoCoords = searchParams.get("coords") || "";
+  const geoHood = searchParams.get("hood") || "";
 
-  const [address, setAddress] = useState(searchedQuery);
-  const [borough, setBorough] = useState("");
+  const [searchError, setSearchError] = useState("");
   const [addressLabel, setAddressLabel] = useState(geoAddress);
   const [propertyData, setPropertyData] = useState<PropertyResponse | null>(null);
-  const [loading, setLoading] = useState(false);
   const [loadingProperty, setLoadingProperty] = useState(true);
   const [error, setError] = useState("");
   const [visibleCount, setVisibleCount] = useState(10);
@@ -342,6 +342,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
         const params = new URLSearchParams({ bbl });
         if (geoAddress) params.set("address", geoAddress);
         if (geoBin) params.set("bin", geoBin);
+        if (geoHood) params.set("hood", geoHood);
         const apiUrl = `/api/property?${params.toString()}`;
         const res = await fetch(apiUrl);
         if (!res.ok) throw new Error("Failed to fetch property data");
@@ -354,26 +355,36 @@ function PropertyContent({ bbl }: { bbl: string }) {
     load();
   }, [bbl]);
 
-  async function handleSearch(e: FormEvent) {
-    e.preventDefault();
-    const trimmed = address.trim();
-    if (!trimmed) return;
-    if (!/\d/.test(trimmed)) { setError("Please include a street number (e.g. 553 Howard Ave, Brooklyn)"); return; }
-    setLoading(true); setError("");
+  function gotoBbl(newBbl: string, q: string, label: string, bin: string, coords: string, hood: string) {
+    const params = new URLSearchParams({ q, address: label, bin, coords, hood });
+    router.push(`/property/${newBbl}?${params.toString()}`);
+  }
+
+  async function handleHeaderSubmit({ address: addr, borough: boro }: { address: string; borough: string }) {
+    if (!addr) return;
+    if (!/\d/.test(addr)) { setSearchError("Please include a street number"); return; }
+    setSearchError("");
     try {
-      const query = borough ? `${trimmed}, ${borough}, NY` : trimmed;
+      const query = boro ? `${addr}, ${boro}, NY` : addr;
       const res = await fetch(`https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(query)}`);
-      if (!res.ok) throw new Error("API request failed");
+      if (!res.ok) throw new Error();
       const data = await res.json();
       const feature = data.features?.[0];
       const foundBbl = feature?.properties?.addendum?.pad?.bbl;
-      if (!foundBbl) { setError("No results found for that address. Try a valid NYC address."); setLoading(false); return; }
+      if (!foundBbl) { setSearchError("No results found"); return; }
       const label = feature.properties.label || "";
       const foundBin = feature.properties.addendum?.pad?.bin || "";
+      const hood = feature.properties.neighbourhood || "";
       const [lng, lat] = feature.geometry?.coordinates || [];
       const coords = lat && lng ? `${lat},${lng}` : "";
-      router.push(`/property/${foundBbl}?q=${encodeURIComponent(trimmed)}&address=${encodeURIComponent(label)}&bin=${foundBin}&coords=${coords}`);
-    } catch { setError("Something went wrong. Please try again."); setLoading(false); }
+      gotoBbl(foundBbl, addr, label, foundBin, coords, hood);
+    } catch {
+      setSearchError("Something went wrong");
+    }
+  }
+
+  function handleHeaderSelect(s: { bbl: string; bin: string; name: string; neighbourhood: string; label: string; coords: string }) {
+    gotoBbl(s.bbl, s.name, s.label, s.bin, s.coords, s.neighbourhood);
   }
 
   // ─── Derived data ───
@@ -542,20 +553,8 @@ function PropertyContent({ bbl }: { bbl: string }) {
           <div className="flex items-center gap-3 mb-3">
             <h1 className="text-lg font-bold tracking-tight text-[var(--foreground)] cursor-pointer" onClick={() => router.push("/")}>Habitable</h1>
           </div>
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Enter address (e.g., 553 Howard Ave, Brooklyn)" className="flex-1 rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-4 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-dim)] outline-none focus:border-[var(--muted)] focus:ring-1 focus:ring-[var(--muted)]" />
-            <select value={borough} onChange={(e) => setBorough(e.target.value)} className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-2 py-2 text-sm text-[var(--foreground)] outline-none focus:border-[var(--muted)] focus:ring-1 focus:ring-[var(--muted)]">
-              <option value="">Any</option>
-              <option value="Manhattan">Manhattan</option>
-              <option value="Brooklyn">Brooklyn</option>
-              <option value="Queens">Queens</option>
-              <option value="Bronx">Bronx</option>
-              <option value="Staten Island">Staten Is.</option>
-            </select>
-            <button type="submit" disabled={loading} className="rounded-lg bg-[var(--foreground)] px-4 py-2 text-sm font-medium text-[var(--background)] hover:opacity-90 disabled:opacity-40">
-              {loading ? "..." : "Search"}
-            </button>
-          </form>
+          <AddressAutocomplete initialAddress={searchedQuery} onSubmit={handleHeaderSubmit} onSelect={handleHeaderSelect} variant="compact" />
+          {searchError && <p className="text-xs text-red-400 mt-2">{searchError}</p>}
         </div>
       </header>
 

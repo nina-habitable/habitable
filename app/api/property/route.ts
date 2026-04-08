@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
   const bbl = request.nextUrl.searchParams.get("bbl");
   const geoAddress = request.nextUrl.searchParams.get("address");
   const geoBin = request.nextUrl.searchParams.get("bin");
+  const geoHood = request.nextUrl.searchParams.get("hood");
 
   console.log("[/api/property] called with bbl:", bbl);
 
@@ -136,7 +137,8 @@ export async function GET(request: NextRequest) {
     const addressLabel = firstViolation
       ? `${firstViolation.housenumber} ${firstViolation.streetname}, ${(firstViolation.boro || "").charAt(0).toUpperCase() + (firstViolation.boro || "").slice(1).toLowerCase()}, NY`
       : geoAddress || null;
-    const nta = firstViolation?.nta || null;
+    // Prefer Geosearch neighbourhood (clean single name) over violation NTA (combined)
+    const nta = geoHood || firstViolation?.nta || null;
 
     console.log(`[/api/property] Fetched: ${violations.length} violations, ${vacateOrders.length} vacate orders, ${complaints.length} complaints, buildingId=${buildingId}, bin=${bin}`)
 
