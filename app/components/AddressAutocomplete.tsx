@@ -71,6 +71,19 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
           })
           .filter((s: Suggestion) => s.bbl)
           .filter((s: Suggestion) => !borough || s.borough === borough);
+
+        // Extract street prefix from input (after house number) for prioritization
+        const streetPrefix = address.trim().toUpperCase().replace(/^\d+\s*/, "").trim();
+        if (streetPrefix.length > 0) {
+          results.sort((a: Suggestion, b: Suggestion) => {
+            const aName = a.name.toUpperCase().replace(/^\d+\s*/, "");
+            const bName = b.name.toUpperCase().replace(/^\d+\s*/, "");
+            const aStarts = aName.startsWith(streetPrefix) ? 0 : 1;
+            const bStarts = bName.startsWith(streetPrefix) ? 0 : 1;
+            return aStarts - bStarts;
+          });
+        }
+
         setSuggestions(results.slice(0, 8));
         setShowDropdown(results.length > 0);
       } catch {

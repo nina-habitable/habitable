@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, FormEvent, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import AddressAutocomplete from "../components/AddressAutocomplete";
 import {
   generatePropertySummary,
   splitByRecency,
@@ -41,95 +42,58 @@ interface BuildingData {
 
 function BuildingSearch({
   onResult,
-  loading: externalLoading,
 }: {
   onResult: (bbl: string, label: string, data: PropertyResponse) => void;
   loading?: boolean;
 }) {
-  const [address, setAddress] = useState("");
-  const [borough, setBorough] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [adding, setAdding] = useState(false);
 
-  async function handleSearch(e: FormEvent) {
-    e.preventDefault();
-    const trimmed = address.trim();
-    if (!trimmed) return;
-
-    if (!/\d/.test(trimmed)) {
-      setError("Include a street number");
-      return;
-    }
-
-    setLoading(true);
+  async function fetchAndAdd(bbl: string, label: string) {
+    setAdding(true);
     setError("");
-
     try {
-      const query = borough ? `${trimmed}, ${borough}, NY` : trimmed;
-      const geoRes = await fetch(
-        `https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(query)}`
-      );
-      if (!geoRes.ok) throw new Error("Geosearch failed");
-
-      const geoData = await geoRes.json();
-      const feature = geoData.features?.[0];
-      const foundBbl = feature?.properties?.addendum?.pad?.bbl;
-
-      if (!foundBbl) {
-        setError("Address not found");
-        setLoading(false);
-        return;
-      }
-
-      const label = feature.properties.label || foundBbl;
-      const propRes = await fetch(`/api/property?bbl=${encodeURIComponent(foundBbl)}`);
-      if (!propRes.ok) throw new Error("Property fetch failed");
-      const propData: PropertyResponse = await propRes.json();
-
-      onResult(foundBbl, label, propData);
-      setAddress("");
+      const res = await fetch(`/api/property?bbl=${encodeURIComponent(bbl)}`);
+      if (!res.ok) throw new Error();
+      const data: PropertyResponse = await res.json();
+      onResult(bbl, label, data);
     } catch {
-      setError("Something went wrong");
+      setError("Failed to load property data");
     } finally {
-      setLoading(false);
+      setAdding(false);
     }
   }
 
-  const isLoading = loading || externalLoading;
+  async function handleManualSubmit({ address, borough }: { address: string; borough: string }) {
+    if (!address) return;
+    if (!/\d/.test(address)) { setError("Include a street number"); return; }
+    setAdding(true);
+    setError("");
+    try {
+      const query = borough ? `${address}, ${borough}, NY` : address;
+      const geoRes = await fetch(`https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(query)}`);
+      if (!geoRes.ok) throw new Error();
+      const geoData = await geoRes.json();
+      const feature = geoData.features?.[0];
+      const foundBbl = feature?.properties?.addendum?.pad?.bbl;
+      if (!foundBbl) { setError("Address not found"); setAdding(false); return; }
+      const label = feature.properties.label || foundBbl;
+      await fetchAndAdd(foundBbl, label);
+    } catch {
+      setError("Something went wrong");
+      setAdding(false);
+    }
+  }
 
   return (
     <div>
-      <form onSubmit={handleSearch} className="flex gap-2">
-        <input
-          type="text"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Enter a NYC address..."
-          className="flex-1 rounded-lg border border-[var(--card-border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-dim)] outline-none focus:border-[var(--muted)] focus:ring-1 focus:ring-[var(--muted)]"
-        />
-        <select
-          value={borough}
-          onChange={(e) => setBorough(e.target.value)}
-          className="rounded-lg border border-[var(--card-border)] bg-[var(--card)] px-2 py-2 text-sm text-[var(--foreground)] outline-none focus:border-[var(--muted)] focus:ring-1 focus:ring-[var(--muted)]"
-        >
-          <option value="">Any</option>
-          <option value="Manhattan">Manhattan</option>
-          <option value="Brooklyn">Brooklyn</option>
-          <option value="Queens">Queens</option>
-          <option value="Bronx">Bronx</option>
-          <option value="Staten Island">Staten Is.</option>
-        </select>
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="rounded-lg bg-[var(--foreground)] px-4 py-2 text-sm font-medium text-[var(--background)] hover:opacity-90 disabled:opacity-40"
-        >
-          {isLoading ? "..." : "Add"}
-        </button>
-      </form>
-      {error && (
-        <p className="text-xs text-red-400 mt-1">{error}</p>
-      )}
+      <AddressAutocomplete
+        onSubmit={handleManualSubmit}
+        onSelect={(s) => fetchAndAdd(s.bbl, s.label || s.name)}
+        variant="compact"
+      />
+      {adding && <p className="text-xs text-[var(--muted-dim)] mt-1">Adding...</p>}
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
   );
 }
