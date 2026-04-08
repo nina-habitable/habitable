@@ -28,6 +28,8 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
   const [showDropdown, setShowDropdown] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const skipNextFetchRef = useRef(false);
+  const latestInputRef = useRef("");
 
   // Click outside or Escape to close
   useEffect(() => {
@@ -49,16 +51,24 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
 
   // Debounced autocomplete fetch
   useEffect(() => {
+    if (skipNextFetchRef.current) {
+      skipNextFetchRef.current = false;
+      return;
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (address.trim().length < 3) {
       setSuggestions([]);
       setShowDropdown(false);
       return;
     }
+    const currentInput = address;
+    latestInputRef.current = currentInput;
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`https://geosearch.planninglabs.nyc/v2/autocomplete?text=${encodeURIComponent(address)}`);
+        const res = await fetch(`https://geosearch.planninglabs.nyc/v2/autocomplete?text=${encodeURIComponent(currentInput)}`);
+        // Ignore stale responses (user has typed more since this fetch started)
+        if (latestInputRef.current !== currentInput) return;
         if (!res.ok) throw new Error();
         const data = await res.json();
         const results: Suggestion[] = (data.features || [])
@@ -120,6 +130,8 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
 
   function handleSelect(s: Suggestion) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    skipNextFetchRef.current = true;
+    latestInputRef.current = s.name;
     setSuggestions([]);
     setShowDropdown(false);
     setAddress(s.name);
