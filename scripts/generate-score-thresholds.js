@@ -107,10 +107,12 @@ const BUCKETS = [
   { label: "201+", min: 201, max: Infinity },
 ];
 
-// Closed status IDs to exclude from violation counts
-// 2=VIOLATION CLOSED, 6=NOV CERTIFIED ON TIME, 9=VIOLATION DISMISSED,
-// 10=NOV CERTIFIED LATE, 11=INFO NOV SENT OUT, 14=LEAD DOCS SUBMITTED ACCEPTABLE
-const CLOSED_STATUS_IDS = "2,6,9,10,11,14";
+// Closed statuses to exclude — matches the app's CLOSED_STATUSES set exactly
+const CLOSED_STATUSES_FILTER = [
+  "VIOLATION CLOSED", "VIOLATION DISMISSED", "NOV CERTIFIED LATE",
+  "NOV CERTIFIED ON TIME", "INFO NOV SENT OUT", "LEAD DOCS SUBMITTED, ACCEPTABLE",
+  "CERTIFICATION POSTPONEMENT GRANTED",
+].map((s) => `currentstatus!='${s}'`).join(" AND ");
 
 // ─── Main ───────────────────────────────────────────
 
@@ -164,7 +166,7 @@ async function main() {
   // STEP 2: Get open violation counts per BBL (last 2 years)
   console.log("STEP 2: Fetching violation counts (last 2 years, by borough)...");
   const violationCounts = await fetchByBorough(
-    (boro) => `${BASE}/wvxf-dwi5.json?$select=bbl,count(*) as cnt&$where=inspectiondate>'${TWO_YEARS_AGO}' AND currentstatusid NOT IN(${CLOSED_STATUS_IDS}) AND boroid='${boro}'&$group=bbl`,
+    (boro) => `${BASE}/wvxf-dwi5.json?$select=bbl,count(*) as cnt&$where=inspectiondate>'${TWO_YEARS_AGO}' AND ${CLOSED_STATUSES_FILTER} AND boroid='${boro}'&$group=bbl`,
     "Violations"
   );
   console.log(`  BBLs with violations: ${violationCounts.size}\n`);
@@ -172,7 +174,7 @@ async function main() {
   // STEP 3: Get Class C violation counts per BBL (last 2 years)
   console.log("STEP 3: Fetching Class C violation counts (last 2 years, by borough)...");
   const classCCounts = await fetchByBorough(
-    (boro) => `${BASE}/wvxf-dwi5.json?$select=bbl,count(*) as cnt&$where=inspectiondate>'${TWO_YEARS_AGO}' AND currentstatusid NOT IN(${CLOSED_STATUS_IDS}) AND class='C' AND boroid='${boro}'&$group=bbl`,
+    (boro) => `${BASE}/wvxf-dwi5.json?$select=bbl,count(*) as cnt&$where=inspectiondate>'${TWO_YEARS_AGO}' AND ${CLOSED_STATUSES_FILTER} AND class='C' AND boroid='${boro}'&$group=bbl`,
     "Class C"
   );
   console.log(`  BBLs with Class C violations: ${classCCounts.size}\n`);
