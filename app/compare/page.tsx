@@ -64,13 +64,13 @@ function BuildingSearch({
     }
   }
 
-  async function handleManualSubmit({ address, borough }: { address: string; borough: string }) {
+  async function handleManualSubmit({ address }: { address: string }) {
     if (!address) return;
     if (!/\d/.test(address)) { setError("Include a street number"); return; }
     setAdding(true);
     setError("");
     try {
-      const query = borough ? `${address}, ${borough}, NY` : address;
+      const query = address;
       const geoRes = await fetch(`https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(query)}`);
       if (!geoRes.ok) throw new Error();
       const geoData = await geoRes.json();

@@ -14,15 +14,13 @@ interface Suggestion {
 
 interface Props {
   initialAddress?: string;
-  initialBorough?: string;
-  onSubmit: (params: { address: string; borough: string }) => void;
+  onSubmit: (params: { address: string }) => void;
   onSelect: (s: Suggestion) => void;
   variant?: "hero" | "compact";
 }
 
-export default function AddressAutocomplete({ initialAddress = "", initialBorough = "", onSubmit, onSelect, variant = "compact" }: Props) {
+export default function AddressAutocomplete({ initialAddress = "", onSubmit, onSelect, variant = "compact" }: Props) {
   const [address, setAddress] = useState(initialAddress);
-  const [borough, setBorough] = useState(initialBorough);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -90,8 +88,7 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
               coords: lat && lng ? `${lat},${lng}` : "",
             };
           })
-          .filter((s: Suggestion) => s.bbl)
-          .filter((s: Suggestion) => !borough || s.borough === borough);
+          .filter((s: Suggestion) => s.bbl);
 
         // Extract street prefix from input (after house number) for prioritization
         const streetPrefix = currentInput.trim().toUpperCase().replace(/^\d+[-\d]*\s*/, "").trim();
@@ -127,7 +124,7 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
       }
     }, 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [address, borough]);
+  }, [address]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -136,7 +133,7 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
     userTypedRef.current = false;
     setSuggestions([]);
     setShowDropdown(false);
-    onSubmit({ address: address.trim(), borough });
+    onSubmit({ address: address.trim() });
   }
 
   function handleSelect(s: Suggestion) {
@@ -153,9 +150,6 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
   const inputClasses = isHero
     ? "flex-1 rounded-lg border border-[var(--card-border)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-dim)] outline-none focus:border-[var(--muted)] focus:ring-1 focus:ring-[var(--muted)]"
     : "flex-1 rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-4 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-dim)] outline-none focus:border-[var(--muted)] focus:ring-1 focus:ring-[var(--muted)]";
-  const selectClasses = isHero
-    ? "rounded-lg border border-[var(--card-border)] bg-[var(--card)] px-3 py-3 text-sm text-[var(--foreground)] outline-none focus:border-[var(--muted)] focus:ring-1 focus:ring-[var(--muted)]"
-    : "rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-2 py-2 text-sm text-[var(--foreground)] outline-none focus:border-[var(--muted)] focus:ring-1 focus:ring-[var(--muted)]";
   const buttonClasses = isHero
     ? "rounded-lg bg-[var(--foreground)] px-5 py-3 text-sm font-medium text-[var(--background)] hover:opacity-90"
     : "rounded-lg bg-[var(--foreground)] px-4 py-2 text-sm font-medium text-[var(--background)] hover:opacity-90";
@@ -193,15 +187,7 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
           autoComplete="off"
           className={inputClasses}
         />
-        <select value={borough} onChange={(e) => setBorough(e.target.value)} className={selectClasses}>
-          <option value="">{isHero ? "Any borough" : "Any"}</option>
-          <option value="Manhattan">Manhattan</option>
-          <option value="Brooklyn">Brooklyn</option>
-          <option value="Queens">Queens</option>
-          <option value="Bronx">Bronx</option>
-          <option value="Staten Island">{isHero ? "Staten Island" : "Staten Is."}</option>
-        </select>
-        <button type="submit" className={buttonClasses}>{isHero ? "Search" : "Search"}</button>
+        <button type="submit" className={buttonClasses}>Search</button>
       </form>
 
       {showDropdown && suggestions.length > 0 && (

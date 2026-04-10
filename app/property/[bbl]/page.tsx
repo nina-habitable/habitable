@@ -360,12 +360,12 @@ function PropertyContent({ bbl }: { bbl: string }) {
     router.push(`/property/${newBbl}?${params.toString()}`);
   }
 
-  async function handleHeaderSubmit({ address: addr, borough: boro }: { address: string; borough: string }) {
+  async function handleHeaderSubmit({ address: addr }: { address: string }) {
     if (!addr) return;
     if (!/\d/.test(addr)) { setSearchError("Please include a street number"); return; }
     setSearchError("");
     try {
-      const query = boro ? `${addr}, ${boro}, NY` : addr;
+      const query = addr;
       const res = await fetch(`https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(query)}`);
       if (!res.ok) throw new Error();
       const data = await res.json();

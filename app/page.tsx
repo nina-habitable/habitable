@@ -15,16 +15,16 @@ export default function Home() {
     router.push(`/property/${bbl}?${params.toString()}`);
   }
 
-  async function handleSubmit({ address, borough }: { address: string; borough: string }) {
+  async function handleSubmit({ address }: { address: string }) {
     if (!address) return;
     if (!/\d/.test(address)) {
-      setError("Please include a street number (e.g. 553 Howard Ave, Brooklyn)");
+      setError("Please include a street number (e.g. 553 Howard Ave)");
       return;
     }
     setLoading(true);
     setError("");
     try {
-      const query = borough ? `${address}, ${borough}, NY` : address;
+      const query = address;
       const res = await fetch(`https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(query)}`);
       if (!res.ok) throw new Error("API request failed");
       const data = await res.json();
