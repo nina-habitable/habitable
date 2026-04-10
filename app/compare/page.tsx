@@ -153,7 +153,7 @@ function BuildingCard({
   const severity = SEVERITY_COLORS[summary.severityLevel] ?? SEVERITY_COLORS.moderate;
 
   const { recent } = splitByRecency(
-    propertyData.violations.map((v) => ({
+    openViolations.map((v) => ({
       class: v.class,
       novdescription: v.novdescription ?? "",
       inspectiondate: v.inspectiondate ?? undefined,
