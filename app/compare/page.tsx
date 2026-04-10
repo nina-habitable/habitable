@@ -22,6 +22,17 @@ function isRecent(dateStr: string | null): boolean {
   return dateStr >= twoYearsAgoISO;
 }
 
+const CLOSED_STATUSES = new Set([
+  "VIOLATION CLOSED", "VIOLATION DISMISSED", "NOV CERTIFIED LATE",
+  "NOV CERTIFIED ON TIME", "INFO NOV SENT OUT", "LEAD DOCS SUBMITTED, ACCEPTABLE",
+  "CERTIFICATION POSTPONEMENT GRANTED",
+]);
+
+function isOpenViolation(status: string | null): boolean {
+  if (!status) return true;
+  return !CLOSED_STATUSES.has(status.toUpperCase());
+}
+
 const SEVERITY_COLORS: Record<string, { bg: string; text: string; label: string }> = {
   clean: { bg: "#1B3D1B", text: "#4ADE80", label: "Clean" },
   minor: { bg: "#2E2810", text: "#D4A843", label: "Minor" },
@@ -110,7 +121,7 @@ function BuildingCard({
   const { bbl, addressLabel, propertyData } = building;
 
   const recentViolations = propertyData.violations.filter((v) =>
-    isRecent(v.inspectiondate)
+    isRecent(v.inspectiondate) && isOpenViolation(v.status)
   );
   const classC = recentViolations.filter((v) => v.class === "C").length;
   const classB = recentViolations.filter((v) => v.class === "B").length;
@@ -127,8 +138,9 @@ function BuildingCard({
     (r) => r.infested_unit_count > 0 && r.filing_date && new Date(r.filing_date) >= twoYearsAgo
   );
 
+  const openViolations = propertyData.violations.filter((v) => isOpenViolation(v.status));
   const summary = generatePropertySummary(
-    propertyData.violations.map((v) => ({
+    openViolations.map((v) => ({
       class: v.class,
       novdescription: v.novdescription ?? "",
       inspectiondate: v.inspectiondate ?? undefined,
