@@ -31,6 +31,27 @@ const LIMIT = 50000;
 
 // ─── Helpers ────────────────────────────────────────
 
+async function fetchPage(url, label, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`HTTP ${res.status}: ${body.slice(0, 200)}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error(`  [${label}] Attempt ${attempt}/${retries} failed: ${err.message}`);
+      if (attempt === retries) throw err;
+      console.log(`  [${label}] Retrying in 5s...`);
+      await new Promise((r) => setTimeout(r, 5000));
+    }
+  }
+}
+
 async function fetchAll(url, label) {
   const results = [];
   let offset = 0;
@@ -38,12 +59,7 @@ async function fetchAll(url, label) {
     const sep = url.includes("?") ? "&" : "?";
     const pageUrl = `${url}${sep}$limit=${LIMIT}&$offset=${offset}${APP_TOKEN ? `&$$app_token=${APP_TOKEN}` : ""}`;
     console.log(`  [${label}] Fetching offset=${offset}...`);
-    const res = await fetch(pageUrl);
-    if (!res.ok) {
-      console.error(`  [${label}] HTTP ${res.status}: ${await res.text().catch(() => "")}`);
-      break;
-    }
-    const data = await res.json();
+    const data = await fetchPage(pageUrl, label);
     if (!Array.isArray(data) || data.length === 0) break;
     results.push(...data);
     console.log(`  [${label}] Got ${data.length} rows (total: ${results.length})`);
@@ -131,40 +147,47 @@ async function main() {
   }
   console.log(`  Active buildings with units > 0: ${buildingMap.size} (skipped ${skippedZeroUnits} with 0 units)\n`);
 
+  // Helper: fetch aggregated data split by borough to avoid server timeouts
+  async function fetchByBorough(urlFn, label) {
+    const map = new Map();
+    for (const boro of [1, 2, 3, 4, 5]) {
+      const boroName = ["", "Manhattan", "Bronx", "Brooklyn", "Queens", "Staten Island"][boro];
+      console.log(`  [${label}] Borough ${boro} (${boroName})...`);
+      const rows = await fetchAll(urlFn(boro), `${label} boro=${boro}`);
+      for (const r of rows) {
+        if (r.bbl) map.set(r.bbl, (map.get(r.bbl) || 0) + (parseInt(r.cnt) || 0));
+      }
+    }
+    return map;
+  }
+
   // STEP 2: Get open violation counts per BBL (last 2 years)
-  console.log("STEP 2: Fetching violation counts (last 2 years)...");
-  const violationRows = await fetchAll(
-    `${BASE}/wvxf-dwi5.json?$select=bbl,count(*) as cnt&$where=inspectiondate>'${TWO_YEARS_AGO}' AND currentstatusid NOT IN(${CLOSED_STATUS_IDS})&$group=bbl`,
+  console.log("STEP 2: Fetching violation counts (last 2 years, by borough)...");
+  const violationCounts = await fetchByBorough(
+    (boro) => `${BASE}/wvxf-dwi5.json?$select=bbl,count(*) as cnt&$where=inspectiondate>'${TWO_YEARS_AGO}' AND currentstatusid NOT IN(${CLOSED_STATUS_IDS}) AND boroid='${boro}'&$group=bbl`,
     "Violations"
   );
-  const violationCounts = new Map();
-  for (const r of violationRows) {
-    if (r.bbl) violationCounts.set(r.bbl, parseInt(r.cnt) || 0);
-  }
   console.log(`  BBLs with violations: ${violationCounts.size}\n`);
 
   // STEP 3: Get Class C violation counts per BBL (last 2 years)
-  console.log("STEP 3: Fetching Class C violation counts (last 2 years)...");
-  const classCRows = await fetchAll(
-    `${BASE}/wvxf-dwi5.json?$select=bbl,count(*) as cnt&$where=inspectiondate>'${TWO_YEARS_AGO}' AND currentstatusid NOT IN(${CLOSED_STATUS_IDS}) AND class='C'&$group=bbl`,
+  console.log("STEP 3: Fetching Class C violation counts (last 2 years, by borough)...");
+  const classCCounts = await fetchByBorough(
+    (boro) => `${BASE}/wvxf-dwi5.json?$select=bbl,count(*) as cnt&$where=inspectiondate>'${TWO_YEARS_AGO}' AND currentstatusid NOT IN(${CLOSED_STATUS_IDS}) AND class='C' AND boroid='${boro}'&$group=bbl`,
     "Class C"
   );
-  const classCCounts = new Map();
-  for (const r of classCRows) {
-    if (r.bbl) classCCounts.set(r.bbl, parseInt(r.cnt) || 0);
-  }
   console.log(`  BBLs with Class C violations: ${classCCounts.size}\n`);
 
   // STEP 4: Get complaint counts per BBL (last 2 years)
-  console.log("STEP 4: Fetching complaint counts (last 2 years)...");
-  const complaintRows = await fetchAll(
-    `${BASE}/ygpa-z7cr.json?$select=bbl,count(distinct complaint_id) as cnt&$where=received_date>'${TWO_YEARS_AGO}'&$group=bbl`,
+  console.log("STEP 4: Fetching complaint counts (last 2 years, by borough)...");
+  const complaintCounts = await fetchByBorough(
+    (boro) => {
+      // BBL ranges: boro 1 = 1000000000-1999999999, boro 2 = 2000000000-2999999999, etc.
+      const lo = boro * 1000000000;
+      const hi = (boro + 1) * 1000000000;
+      return `${BASE}/ygpa-z7cr.json?$select=bbl,count(distinct complaint_id) as cnt&$where=received_date>'${TWO_YEARS_AGO}' AND bbl>=${lo} AND bbl<${hi}&$group=bbl`;
+    },
     "Complaints"
   );
-  const complaintCounts = new Map();
-  for (const r of complaintRows) {
-    if (r.bbl) complaintCounts.set(r.bbl, parseInt(r.cnt) || 0);
-  }
   console.log(`  BBLs with complaints: ${complaintCounts.size}\n`);
 
   // STEP 5: Calculate per-unit rates for each building
