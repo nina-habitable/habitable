@@ -189,7 +189,7 @@ export default function AddressAutocomplete({ initialAddress = "", initialBoroug
             }
           }}
           onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
-          placeholder="Enter address (e.g., 553 Howard Ave, Brooklyn)"
+          placeholder="Enter address (e.g., 553 Howard Ave)"
           autoComplete="off"
           className={inputClasses}
         />
