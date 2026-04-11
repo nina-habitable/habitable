@@ -196,7 +196,7 @@ function BuildingCard({
           const score = calculateHabitableScore(propertyData, "recent");
           if (score.type === "score") {
             return (
-              <p className={`text-sm font-bold ${score.percentile > 50 ? "text-green-400" : score.percentile >= 30 ? "text-[#FFB020]" : "text-[#FF4D4D]"}`}>
+              <p className={`text-sm font-bold ${score.accentColor === "green" ? "text-green-400" : score.accentColor === "amber" ? "text-[#FFB020]" : "text-[#FF4D4D]"}`}>
                 Better than {score.percentile}%
               </p>
             );

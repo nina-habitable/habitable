@@ -25,8 +25,12 @@ interface ScoreResult {
   type: "score";
   percentile: number;
   violPerUnit: number;
+  violationCount: number;
+  classCCount: number;
+  complaintCount: number;
   peerCount: number;
   bucketLabel: string;
+  accentColor: "green" | "amber" | "red";
 }
 interface NoScoreResult { type: "no_score"; reason: "aep" | "missing_data" }
 
@@ -196,11 +200,30 @@ export function calculateHabitableScore(
   // Convert to "better than X%"
   const percentile = Math.round(Math.max(1, Math.min(99, 100 - combinedWorst)));
 
+  // Open complaints count
+  const openComplaints = complaints.filter(
+    (c) => c.complaint_status?.toUpperCase() === "OPEN"
+  ).length;
+
+  // Color: green only if percentile > 50 AND no Class C AND < 3 open complaints
+  let accentColor: "green" | "amber" | "red";
+  if (percentile < 30) {
+    accentColor = "red";
+  } else if (percentile > 50 && classCCount === 0 && openComplaints < 3) {
+    accentColor = "green";
+  } else {
+    accentColor = "amber";
+  }
+
   return {
     type: "score",
     percentile,
     violPerUnit: Math.round(violPerUnit * 100) / 100,
+    violationCount: openViolations.length,
+    classCCount,
+    complaintCount,
     peerCount: bucket.count,
     bucketLabel,
+    accentColor,
   };
 }
