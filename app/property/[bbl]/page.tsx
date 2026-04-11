@@ -601,6 +601,28 @@ function PropertyContent({ bbl }: { bbl: string }) {
               </div>
             </div>
 
+            {/* Habitable Score */}
+            {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "clean" && (
+              <div className="rounded-xl border border-green-900 bg-green-950 p-4">
+                <p className="text-sm font-semibold text-green-400">Clean record — no open violations, complaints, or litigation {timeframe === "recent" ? "in the last 2 years" : ""}</p>
+              </div>
+            )}
+            {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "score" && (
+              <div className={`rounded-xl border p-4 ${habitableScore.percentile > 50 ? "border-green-900 bg-green-950" : habitableScore.percentile >= 30 ? "border-[#3D2E0A] bg-[#2E2810]" : "border-[#3D1414] bg-[#2E1010]"}`}>
+                <p className={`text-lg font-bold ${habitableScore.percentile > 50 ? "text-green-400" : habitableScore.percentile >= 30 ? "text-[#FFB020]" : "text-[#FF4D4D]"}`}>
+                  Better than {habitableScore.percentile}% of similar-sized buildings across NYC
+                </p>
+                <p className="text-xs text-[var(--muted-dim)] mt-1">
+                  {habitableScore.violPerUnit} violations per unit · Compared against {habitableScore.peerCount.toLocaleString()} buildings with {habitableScore.bucketLabel} units
+                </p>
+              </div>
+            )}
+            {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "no_score" && habitableScore.reason === "missing_data" && (
+              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-4">
+                <p className="text-xs text-[var(--muted)]">Score unavailable — unit count not found in HPD records</p>
+              </div>
+            )}
+
             {/* Building Registration */}
             {(contacts.owner || contacts.agent || ownerInfo) && (
               <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-4">
@@ -743,26 +765,6 @@ function PropertyContent({ bbl }: { bbl: string }) {
                   ))}
                 </div>
               </div>
-            )}
-
-            {/* Habitable Score */}
-            {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "clean" && (
-              <div className="rounded-xl border border-green-900 bg-green-950 p-4">
-                <p className="text-sm font-semibold text-green-400">Clean record — no open violations, complaints, or litigation {timeframe === "recent" ? "in the last 2 years" : ""}</p>
-              </div>
-            )}
-            {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "score" && (
-              <div className={`rounded-xl border p-4 ${habitableScore.percentile > 50 ? "border-green-900 bg-green-950" : habitableScore.percentile >= 30 ? "border-[#3D2E0A] bg-[#2E2810]" : "border-[#3D1414] bg-[#2E1010]"}`}>
-                <p className={`text-lg font-bold ${habitableScore.percentile > 50 ? "text-green-400" : habitableScore.percentile >= 30 ? "text-[#FFB020]" : "text-[#FF4D4D]"}`}>
-                  Better than {habitableScore.percentile}% of similar-sized buildings across NYC
-                </p>
-                <p className="text-xs text-[var(--muted-dim)] mt-1">
-                  {habitableScore.violPerUnit} violations per unit · Compared against {habitableScore.peerCount.toLocaleString()} buildings with {habitableScore.bucketLabel} units
-                </p>
-              </div>
-            )}
-            {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "no_score" && habitableScore.reason === "missing_data" && (
-              <p className="text-xs text-[var(--muted-dim)]">Score unavailable — building data incomplete</p>
             )}
 
             {/* Timeframe toggle */}
