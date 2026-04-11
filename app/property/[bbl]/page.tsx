@@ -601,10 +601,10 @@ function PropertyContent({ bbl }: { bbl: string }) {
               </div>
             </div>
 
-            {/* Habitable Score */}
+            {/* Habitable Score — hidden for AEP buildings */}
             {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "clean" && (
               <div className="rounded-xl border border-green-900 bg-green-950 p-4">
-                <p className="text-sm font-semibold text-green-400">Clean record — no open violations, complaints, or litigation {timeframe === "recent" ? "in the last 2 years" : ""}</p>
+                <p className="text-sm font-semibold text-green-400">{habitableScore.message}</p>
               </div>
             )}
             {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "score" && (

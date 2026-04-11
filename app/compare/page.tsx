@@ -202,7 +202,14 @@ function BuildingCard({
             );
           }
           if (score.type === "clean") {
-            return <p className="text-sm font-bold text-green-400">Clean record</p>;
+            return <p className="text-sm font-bold text-green-400">{score.tier === 1 ? "Clean record" : "No open violations"}</p>;
+          }
+          if (score.type === "no_score" && score.reason === "aep") {
+            return (
+              <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold bg-[#431407] text-orange-400">
+                AEP Watchlist
+              </span>
+            );
           }
           return <p className="text-xs text-[var(--muted-dim)]">Score unavailable</p>;
         })() : (
@@ -257,8 +264,8 @@ function BuildingCard({
           </span>
         </div>
 
-        {/* Vacate order */}
-        {propertyData.vacate_orders.length > 0 && (
+        {/* Vacate order — only if not rescinded */}
+        {propertyData.vacate_orders.some((v) => !v.rescind_date) && (
           <div className="rounded-lg border border-red-800 bg-red-950 px-2 py-1.5 mt-2">
             <p className="text-xs font-semibold text-red-400">
               Active vacate order

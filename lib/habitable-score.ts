@@ -20,7 +20,7 @@ function isOpen(status: string | null): boolean {
   return !CLOSED_STATUSES.has(status.toUpperCase());
 }
 
-interface CleanResult { type: "clean" }
+interface CleanResult { type: "clean"; tier: 1 | 2; message: string }
 interface ScoreResult {
   type: "score";
   percentile: number;
@@ -136,14 +136,29 @@ export function calculateHabitableScore(
     (a) => a.current_status !== "AEP Active"
   );
 
-  // Clean check
-  if (
-    openViolations.length === 0 &&
-    complaintCount === 0 &&
-    litigationCount === 0 &&
-    bedbugInfestations === 0
-  ) {
-    return { type: "clean" };
+  // Clean check — no open violations
+  if (openViolations.length === 0) {
+    // Count closed violations in timeframe
+    const closedViolations = propertyData.violations.filter(
+      (v) => !isOpen(v.status) && isInTimeframe(v.inspectiondate)
+    ).length;
+    // Total complaints in timeframe (open + closed)
+    const totalComplaints = complaintCount;
+
+    if (closedViolations === 0 && totalComplaints === 0 && litigationCount === 0 && bedbugInfestations === 0) {
+      // Tier 1: nothing on record
+      const period = timeframe === "recent" ? " in the last 2 years" : "";
+      return { type: "clean", tier: 1, message: `Clean record — no violations, complaints, or litigation${period}` };
+    }
+
+    // Tier 2: all issues resolved — build message
+    const parts: string[] = [];
+    if (closedViolations > 0) parts.push(`${closedViolations} violation${closedViolations === 1 ? " was" : "s were"} issued and closed`);
+    if (totalComplaints > 0) parts.push(`${totalComplaints} complaint${totalComplaints === 1 ? " was" : "s were"} filed`);
+    if (litigationCount > 0) parts.push(`${litigationCount} litigation case${litigationCount === 1 ? " was" : "s were"} resolved`);
+    const period = timeframe === "recent" ? " in the last 2 years" : "";
+    const detail = parts.length > 0 ? ` — ${parts.join(" and ")}${period}` : period;
+    return { type: "clean", tier: 2, message: `No open violations${detail}` };
   }
 
   // Calculate score
