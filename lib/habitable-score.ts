@@ -6,7 +6,7 @@
 import thresholds from "../scripts/score-thresholds.json";
 import type { PropertyResponse } from "./property-types";
 
-export const SHOW_HABITABLE_SCORE = false;
+export const SHOW_HABITABLE_SCORE = true;
 
 // Same closed statuses as the property page
 const CLOSED_STATUSES = new Set([
