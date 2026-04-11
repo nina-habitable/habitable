@@ -10,6 +10,7 @@ import {
   CLASS_INFO,
 } from "../../lib/violation-mappings";
 import type { PropertyResponse } from "../../lib/property-types";
+import { calculateHabitableScore, SHOW_HABITABLE_SCORE } from "../../lib/habitable-score";
 
 // ─── Constants ──────────────────────────────────────
 
@@ -189,14 +190,28 @@ function BuildingCard({
         </button>
       </div>
 
-      {/* Severity badge */}
-      <div className="mb-4">
+      {/* Severity badge + score */}
+      <div className="mb-4 space-y-1">
         <span
           className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
           style={{ backgroundColor: severity.bg, color: severity.text }}
         >
           {severity.label}
         </span>
+        {SHOW_HABITABLE_SCORE && (() => {
+          const score = calculateHabitableScore(propertyData, "recent");
+          if (score.type === "score") {
+            return (
+              <p className={`text-xs font-medium ${score.percentile > 50 ? "text-green-400" : score.percentile >= 30 ? "text-[#FFB020]" : "text-[#FF4D4D]"}`}>
+                Better than {score.percentile}%
+              </p>
+            );
+          }
+          if (score.type === "clean") {
+            return <p className="text-xs font-medium text-green-400">Clean record</p>;
+          }
+          return null;
+        })()}
       </div>
 
       {/* Stats */}
