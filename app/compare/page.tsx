@@ -47,6 +47,7 @@ const SEVERITY_COLORS: Record<string, { bg: string; text: string; label: string 
 interface BuildingData {
   bbl: string;
   addressLabel: string;
+  searchQuery?: string;
   propertyData: PropertyResponse;
 }
 
@@ -55,20 +56,20 @@ interface BuildingData {
 function BuildingSearch({
   onResult,
 }: {
-  onResult: (bbl: string, label: string, data: PropertyResponse) => void;
+  onResult: (bbl: string, label: string, data: PropertyResponse, searchQuery?: string) => void;
   loading?: boolean;
 }) {
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
 
-  async function fetchAndAdd(bbl: string, label: string) {
+  async function fetchAndAdd(bbl: string, label: string, query?: string) {
     setAdding(true);
     setError("");
     try {
       const res = await fetch(`/api/property?bbl=${encodeURIComponent(bbl)}`);
       if (!res.ok) throw new Error();
       const data: PropertyResponse = await res.json();
-      onResult(bbl, label, data);
+      onResult(bbl, label, data, query);
     } catch {
       setError("Failed to load property data");
     } finally {
@@ -90,7 +91,7 @@ function BuildingSearch({
       const foundBbl = feature?.properties?.addendum?.pad?.bbl;
       if (!foundBbl) { setError("Address not found"); setAdding(false); return; }
       const label = feature.properties.label || foundBbl;
-      await fetchAndAdd(foundBbl, label);
+      await fetchAndAdd(foundBbl, label, address);
     } catch {
       setError("Something went wrong");
       setAdding(false);
@@ -119,7 +120,15 @@ function BuildingCard({
   building: BuildingData;
   onRemove: () => void;
 }) {
-  const { bbl, addressLabel, propertyData } = building;
+  const { bbl, addressLabel, searchQuery, propertyData } = building;
+
+  // Fuzzy match: compare house numbers
+  const fuzzyMatch = (() => {
+    if (!searchQuery || !addressLabel) return false;
+    const searchedNum = searchQuery.match(/^\s*(\d+)/)?.[1];
+    const returnedNum = addressLabel.match(/^\s*(\d+)/)?.[1];
+    return searchedNum && returnedNum && searchedNum !== returnedNum;
+  })();
 
   const recentViolations = propertyData.violations.filter((v) =>
     isRecent(v.inspectiondate) && isOpenViolation(v.status)
@@ -163,6 +172,10 @@ function BuildingCard({
 
   return (
     <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5 flex flex-col">
+      {/* Fuzzy match note */}
+      {fuzzyMatch && (
+        <p className="text-[10px] text-[#6B8CAE] mb-2">Showing results for {addressLabel}</p>
+      )}
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="min-w-0">
@@ -298,7 +311,7 @@ function BuildingCard({
 
       {/* View full profile link */}
       <Link
-        href={`/property/${bbl}`}
+        href={`/property/${bbl}${searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : ""}`}
         className="mt-4 block text-center rounded-lg border border-[var(--card-border)] py-2 text-sm text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
       >
         View full profile
@@ -352,9 +365,9 @@ function CompareContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleResult(bbl: string, label: string, data: PropertyResponse) {
+  function handleResult(bbl: string, label: string, data: PropertyResponse, searchQuery?: string) {
     if (buildings.some((b) => b.bbl === bbl)) return;
-    const updated = [...buildings, { bbl, addressLabel: label, propertyData: data }];
+    const updated = [...buildings, { bbl, addressLabel: label, searchQuery, propertyData: data }];
     setBuildings(updated);
     updateUrl(updated);
   }
