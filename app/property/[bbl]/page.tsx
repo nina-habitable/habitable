@@ -903,7 +903,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
                 <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">Emergency Repairs</h3>
                 <p className="text-sm text-[var(--muted)] mb-2">
                   The city performed {filteredWorkOrders.length} emergency repair{filteredWorkOrders.length === 1 ? "" : "s"}
-                  {totalWorkOrderAmount > 0 && ` costing $${totalWorkOrderAmount.toLocaleString()}`} because the landlord failed to act.
+                  {totalWorkOrderAmount > 0 && ` costing $${Math.round(totalWorkOrderAmount).toLocaleString()}`} because the landlord failed to act.
                 </p>
                 {(() => {
                   const typeCounts: Record<string, number> = {};
@@ -912,7 +912,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
                   return types.length > 0 ? (
                     <p className="text-[10px] text-[var(--muted-dim)]">
                       {(() => {
-                        const labels: Record<string, string> = { GC: "General construction", DELEAD: "Lead removal", PLUMB: "Plumbing", ELEC: "Electrical", HEAT: "Heating", PAINT: "Painting", LOCKSMITH: "Locksmith" };
+                        const labels: Record<string, string> = { GC: "General construction", DELEAD: "Lead removal", PLUMB: "Plumbing", ELEC: "Electrical", HEAT: "Heating", PAINT: "Painting", LOCKSMITH: "Locksmith", ASBEST: "Asbestos removal", ENGINR: "Engineering", CARP: "Carpentry", MASON: "Masonry", ROOF: "Roofing", IRON: "Ironwork", EXTERMIN: "Extermination" };
                         return `Work types: ${types.map(([t, c]) => `${labels[t.toUpperCase()] || titleCase(t)} (${c})`).join(", ")}`;
                       })()}
                     </p>
