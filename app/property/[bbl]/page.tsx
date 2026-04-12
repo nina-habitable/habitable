@@ -595,11 +595,8 @@ function PropertyContent({ bbl }: { bbl: string }) {
         {addressMismatch && (
           <div className="rounded-xl border border-[#2A3545] bg-[#1A2533] px-4 py-3 mb-4 text-sm text-[#6B8CAE]">
             We couldn&apos;t find an exact match for your address. Showing results for <span className="font-semibold text-[var(--foreground)]">{addressMismatch}</span>.
-            {geoCoords && (
-              <> {" "}
-                <a href={`https://www.google.com/maps?q=${geoCoords}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--foreground)]">View on map to verify this is your building</a>
-              </>
-            )}
+            {" "}
+            <a href={`https://www.google.com/maps?q=${geoCoords || encodeURIComponent(addressMismatch)}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--foreground)]">View on map to verify this is your building</a>
           </div>
         )}
         {loadingProperty && <p className="text-center text-sm text-[var(--muted)] py-12">Loading building data...</p>}

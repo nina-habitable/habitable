@@ -173,8 +173,8 @@ function BuildingCard({
   return (
     <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5 flex flex-col">
       {/* Fuzzy match note */}
-      {fuzzyMatch && (
-        <p className="text-[10px] text-[#6B8CAE] mb-2">Showing results for {addressLabel}</p>
+      {fuzzyMatch && searchQuery && (
+        <p className="text-[10px] text-[#6B8CAE] mb-2">You searched for {searchQuery}</p>
       )}
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-3">
