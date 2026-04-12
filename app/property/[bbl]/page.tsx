@@ -889,9 +889,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
               <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5">
                 <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">Lead Paint Violations</h3>
                 {openLeadCount > 0 ? (
-                  <div className="rounded-lg border border-[#3D1414] bg-[#2E1010] px-3 py-2 mb-2">
-                    <p className="text-sm text-[#FF4D4D]">{openLeadCount} open lead paint violation{openLeadCount === 1 ? "" : "s"} — critical for families with children</p>
-                  </div>
+                  <p className="text-sm font-medium text-[var(--foreground)] mb-2">{openLeadCount} open lead paint violation{openLeadCount === 1 ? "" : "s"} — critical for families with children</p>
                 ) : (
                   <p className="text-xs text-[var(--muted)] mb-2">No open lead paint violations. {filteredLead.length} {filteredLead.length === 1 ? "was" : "were"} previously issued and resolved.</p>
                 )}
@@ -913,7 +911,10 @@ function PropertyContent({ bbl }: { bbl: string }) {
                   const types = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
                   return types.length > 0 ? (
                     <p className="text-[10px] text-[var(--muted-dim)]">
-                      Work types: {types.map(([t, c]) => `${titleCase(t)} (${c})`).join(", ")}
+                      {(() => {
+                        const labels: Record<string, string> = { GC: "General construction", DELEAD: "Lead removal", PLUMB: "Plumbing", ELEC: "Electrical", HEAT: "Heating", PAINT: "Painting", LOCKSMITH: "Locksmith" };
+                        return `Work types: ${types.map(([t, c]) => `${labels[t.toUpperCase()] || titleCase(t)} (${c})`).join(", ")}`;
+                      })()}
                     </p>
                   ) : null;
                 })()}

@@ -266,7 +266,7 @@ function BuildingCard({
               {leadCount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-[var(--muted)]">Lead paint</span>
-                  <span className="font-semibold text-[#FF4D4D]">{leadCount} open</span>
+                  <span className="font-semibold text-[var(--foreground)]">{leadCount} open</span>
                 </div>
               )}
               {woCount > 0 && (
