@@ -83,9 +83,36 @@ export interface PropertyResponse {
   cached_at: string;
   aep_status?: AepEntry[];
   service_requests_311?: ServiceRequest311[];
+  lead_violations?: LeadViolation[];
+  work_orders?: WorkOrder[];
   from_cache: boolean;
   address_label?: string;
   nta?: string | null;
+}
+
+export interface LeadViolation {
+  id: string;
+  bbl: string;
+  violation_id: string;
+  class: string;
+  status: string | null;
+  novdescription: string | null;
+  inspectiondate: string | null;
+  currentstatusdate: string | null;
+  apartment: string | null;
+}
+
+export interface WorkOrder {
+  id: string;
+  bbl: string;
+  omo_id: string;
+  omo_number: string | null;
+  building_id: string | null;
+  work_type: string | null;
+  status_reason: string | null;
+  award_amount: number | null;
+  created_date: string | null;
+  description: string | null;
 }
 
 export interface ServiceRequest311 {

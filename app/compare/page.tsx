@@ -254,15 +254,30 @@ function BuildingCard({
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-[var(--muted)]">Bed bugs</span>
-          <span
-            className="font-semibold"
-            style={{
-              color: recentBedbugs.length > 0 ? "#FFB020" : "var(--muted)",
-            }}
-          >
+          <span className="font-semibold" style={{ color: recentBedbugs.length > 0 ? "#FFB020" : "var(--muted)" }}>
             {recentBedbugs.length > 0 ? "Reported" : "Clean"}
           </span>
         </div>
+        {(() => {
+          const leadCount = (propertyData.lead_violations ?? []).filter((v) => isRecent(v.inspectiondate) && isOpenViolation(v.status)).length;
+          const woCount = (propertyData.work_orders ?? []).filter((o) => isRecent(o.created_date)).length;
+          return (
+            <>
+              {leadCount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-[var(--muted)]">Lead paint</span>
+                  <span className="font-semibold text-[#FF4D4D]">{leadCount} open</span>
+                </div>
+              )}
+              {woCount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-[var(--muted)]">Emergency repairs</span>
+                  <span className="font-semibold text-[var(--foreground)]">{woCount}</span>
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* Vacate order — only if not rescinded */}
         {propertyData.vacate_orders.some((v) => !v.rescind_date) && (

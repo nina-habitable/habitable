@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     if (cached && cached.length > 0) {
       // Use supabaseAdmin for all cached reads to bypass RLS
-      const [cachedVacate, cachedComplaints, cachedLitigations, cachedBedbugs, cachedProperty, cachedBuildingDetails, cachedContacts, cachedAep, cached311] = await Promise.all([
+      const [cachedVacate, cachedComplaints, cachedLitigations, cachedBedbugs, cachedProperty, cachedBuildingDetails, cachedContacts, cachedAep, cached311, cachedLead, cachedWorkOrders] = await Promise.all([
         supabaseAdmin.from("vacate_orders").select("*").eq("bbl", bbl),
         supabaseAdmin.from("complaints").select("*").eq("bbl", bbl),
         supabaseAdmin.from("litigations").select("*").eq("bbl", bbl),
@@ -46,6 +46,8 @@ export async function GET(request: NextRequest) {
         supabaseAdmin.from("registration_contacts").select("*").eq("bbl", bbl),
         supabaseAdmin.from("aep_status").select("*").eq("bbl", bbl),
         supabaseAdmin.from("service_requests_311").select("*").eq("bbl", bbl),
+        supabaseAdmin.from("lead_violations").select("*").eq("bbl", bbl),
+        supabaseAdmin.from("work_orders").select("*").eq("bbl", bbl),
       ]);
 
       console.log(`[/api/property] Cache hit for ${bbl}: building_details=${!!cachedBuildingDetails.data}, contacts=${(cachedContacts.data ?? []).length}, bd_error=${cachedBuildingDetails.error?.message ?? "none"}, contacts_error=${cachedContacts.error?.message ?? "none"}`);
@@ -74,6 +76,8 @@ export async function GET(request: NextRequest) {
         registration_contacts: cachedContacts.data ?? [],
         aep_status: cachedAep.data ?? [],
         service_requests_311: cached311.data ?? [],
+        lead_violations: cachedLead.data ?? [],
+        work_orders: cachedWorkOrders.data ?? [],
         address_label: cachedAddress,
         nta: cachedProperty.data?.nta ?? null,
         cached_at: cached[0].created_at,
@@ -85,7 +89,7 @@ export async function GET(request: NextRequest) {
     const twoYearsAgo = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
     // Fetch ALL violations (no status filter — frontend filters open vs pending)
-    const [violations, vacateOrders, complaints, aepRaw, raw311] = await Promise.all([
+    const [violations, vacateOrders, complaints, aepRaw, raw311, leadRaw, omoRaw] = await Promise.all([
       safeFetch(
         `https://data.cityofnewyork.us/resource/wvxf-dwi5.json?bbl=${encodeURIComponent(bbl)}&$limit=5000`,
         "HPD Violations"
@@ -105,6 +109,14 @@ export async function GET(request: NextRequest) {
       safeFetch(
         `https://data.cityofnewyork.us/resource/erm2-nwe9.json?$where=bbl='${bbl}' AND agency!='HPD'&$limit=200`,
         "311 Service Requests"
+      ),
+      safeFetch(
+        `https://data.cityofnewyork.us/resource/v574-pyre.json?boroid=${bbl[0]}&block=${bbl.slice(1, 6)}&lot=${bbl.slice(6)}&$limit=500`,
+        "Lead Paint Violations"
+      ),
+      safeFetch(
+        `https://data.cityofnewyork.us/resource/mdbu-nrqn.json?bbl=${encodeURIComponent(bbl)}&$limit=200`,
+        "Emergency Work Orders"
       ),
     ]);
 
@@ -239,6 +251,33 @@ export async function GET(request: NextRequest) {
       current_status: a.current_status || null,
       aep_round: a.aep_round || null,
       violations_at_start: parseInt(a.of_b_c_violations_at_start) || null,
+    }));
+
+    // Map lead paint violations
+    const mappedLead = leadRaw.map((v) => ({
+      id: v.violationid,
+      bbl: bbl,
+      violation_id: v.violationid,
+      class: v.class || "C",
+      status: v.currentstatus || null,
+      novdescription: v.novdescription || null,
+      inspectiondate: v.inspectiondate || null,
+      currentstatusdate: v.currentstatusdate || null,
+      apartment: v.apartment || null,
+    }));
+
+    // Map emergency work orders
+    const mappedWorkOrders = omoRaw.map((o) => ({
+      id: o.omoid,
+      bbl: bbl,
+      omo_id: o.omoid,
+      omo_number: o.omonumber || null,
+      building_id: o.buildingid || null,
+      work_type: o.worktypegeneral || null,
+      status_reason: o.omostatusreason || null,
+      award_amount: parseFloat(o.omoawardamount) || null,
+      created_date: o.omocreatedate || null,
+      description: o.omodescription || null,
     }));
 
     // Upsert property first (foreign key constraint)
@@ -384,6 +423,16 @@ export async function GET(request: NextRequest) {
       if (err311) console.error("Supabase service_requests_311 upsert error:", JSON.stringify(err311));
     }
 
+    if (mappedLead.length > 0) {
+      const { error: leadErr } = await supabaseAdmin.from("lead_violations").upsert(mappedLead, { onConflict: "id" });
+      if (leadErr) console.error("Supabase lead_violations upsert error:", JSON.stringify(leadErr));
+    }
+
+    if (mappedWorkOrders.length > 0) {
+      const { error: omoErr } = await supabaseAdmin.from("work_orders").upsert(mappedWorkOrders, { onConflict: "id" });
+      if (omoErr) console.error("Supabase work_orders upsert error:", JSON.stringify(omoErr));
+    }
+
     await Promise.all(writePromises);
 
     // Return freshly fetched data mapped to our schema
@@ -447,6 +496,8 @@ export async function GET(request: NextRequest) {
       registration_contacts: mappedContacts,
       aep_status: mappedAep,
       service_requests_311: mapped311,
+      lead_violations: mappedLead,
+      work_orders: mappedWorkOrders,
       address_label: addressLabel,
       nta: nta,
       cached_at: new Date().toISOString(),

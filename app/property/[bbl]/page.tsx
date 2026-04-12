@@ -18,6 +18,7 @@ import type {
   ServiceRequest311,
   PropertyResponse,
 } from "../../../lib/property-types";
+import type { LeadViolation, WorkOrder } from "../../../lib/property-types";
 import { calculateHabitableScore, SHOW_HABITABLE_SCORE } from "../../../lib/habitable-score";
 
 // ─── Helpers ────────────────────────────────────────
@@ -508,6 +509,32 @@ function PropertyContent({ bbl }: { bbl: string }) {
   const open311 = useMemo(() => filtered311.filter((r) => r.status?.toLowerCase() === "open").length, [filtered311]);
 
 
+  const filteredLead = useMemo(() => {
+    const all = propertyData?.lead_violations ?? [];
+    if (all.length === 0) return [] as LeadViolation[];
+    const sorted = [...all].sort((a, b) => (b.inspectiondate ?? "").localeCompare(a.inspectiondate ?? ""));
+    if (timeframe === "all") return sorted;
+    return sorted.filter((v) => isRecent(v.inspectiondate));
+  }, [propertyData, timeframe]);
+
+  const openLeadCount = useMemo(() =>
+    filteredLead.filter((v) => isOpenViolation(v.status)).length,
+    [filteredLead]
+  );
+
+  const filteredWorkOrders = useMemo(() => {
+    const all = propertyData?.work_orders ?? [];
+    if (all.length === 0) return [] as WorkOrder[];
+    const sorted = [...all].sort((a, b) => (b.created_date ?? "").localeCompare(a.created_date ?? ""));
+    if (timeframe === "all") return sorted;
+    return sorted.filter((o) => isRecent(o.created_date));
+  }, [propertyData, timeframe]);
+
+  const totalWorkOrderAmount = useMemo(() =>
+    filteredWorkOrders.reduce((sum, o) => sum + (o.award_amount || 0), 0),
+    [filteredWorkOrders]
+  );
+
   const landlordQuestions = useMemo(() => generateQuestions(mappedViolations), [mappedViolations]);
 
   const classCount = (cls: string) => filteredViolations.filter((v) => v.class === cls).length;
@@ -856,6 +883,42 @@ function PropertyContent({ bbl }: { bbl: string }) {
                 </div>
               );
             })()}
+
+            {/* Lead Paint */}
+            {filteredLead.length > 0 && (
+              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5">
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">Lead Paint Violations</h3>
+                {openLeadCount > 0 ? (
+                  <div className="rounded-lg border border-[#3D1414] bg-[#2E1010] px-3 py-2 mb-2">
+                    <p className="text-sm text-[#FF4D4D]">{openLeadCount} open lead paint violation{openLeadCount === 1 ? "" : "s"} — critical for families with children</p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-[var(--muted)] mb-2">No open lead paint violations. {filteredLead.length} {filteredLead.length === 1 ? "was" : "were"} previously issued and resolved.</p>
+                )}
+                <p className="text-[10px] text-[var(--muted-dim)]">{filteredLead.length} total lead violation{filteredLead.length === 1 ? "" : "s"} ({timeframeLabel})</p>
+              </div>
+            )}
+
+            {/* Emergency Work Orders */}
+            {filteredWorkOrders.length > 0 && (
+              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5">
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">Emergency Repairs</h3>
+                <p className="text-sm text-[var(--muted)] mb-2">
+                  The city performed {filteredWorkOrders.length} emergency repair{filteredWorkOrders.length === 1 ? "" : "s"}
+                  {totalWorkOrderAmount > 0 && ` costing $${totalWorkOrderAmount.toLocaleString()}`} because the landlord failed to act.
+                </p>
+                {(() => {
+                  const typeCounts: Record<string, number> = {};
+                  for (const o of filteredWorkOrders) { typeCounts[o.work_type || "Other"] = (typeCounts[o.work_type || "Other"] || 0) + 1; }
+                  const types = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+                  return types.length > 0 ? (
+                    <p className="text-[10px] text-[var(--muted-dim)]">
+                      Work types: {types.map(([t, c]) => `${titleCase(t)} (${c})`).join(", ")}
+                    </p>
+                  ) : null;
+                })()}
+              </div>
+            )}
 
             {/* Other Agency Reports (311) */}
             {filtered311.length > 0 && (
