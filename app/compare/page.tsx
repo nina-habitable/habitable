@@ -102,7 +102,7 @@ function BuildingSearch({
     <div>
       <AddressAutocomplete
         onSubmit={handleManualSubmit}
-        onSelect={(s) => fetchAndAdd(s.bbl, s.label || s.name)}
+        onSelect={(s) => fetchAndAdd(s.bbl, s.label || s.name, s.name)}
         variant="compact"
       />
       {adding && <p className="text-xs text-[var(--muted-dim)] mt-1">Adding...</p>}
