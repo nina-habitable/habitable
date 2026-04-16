@@ -366,6 +366,8 @@ function PropertyContent({ bbl }: { bbl: string }) {
     if (!propertyData) return;
     const ownerName = (propertyData.registration_contacts ?? []).find((c) => c.type === "CorporateOwner")?.corporation_name;
     if (!ownerName) return;
+    // Skip portfolio lookup for condo/co-op buildings
+    if (buildingType === "Co-op" || buildingType === "Condo" || buildingType === "Condo / co-op") return;
 
     async function loadPortfolio() {
       setPortfolioLoading(true);
@@ -752,6 +754,17 @@ function PropertyContent({ bbl }: { bbl: string }) {
             {(() => {
               const ownerName = (propertyData.registration_contacts ?? []).find((c) => c.type === "CorporateOwner")?.corporation_name;
               if (!ownerName) return null;
+
+              // Condo/co-op: show context instead of portfolio
+              if (buildingType === "Co-op" || buildingType === "Condo" || buildingType === "Condo / co-op") {
+                return (
+                  <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-3">
+                    <h3 className="text-xs font-semibold text-[var(--muted-dim)] uppercase tracking-wide mb-1">Owner Portfolio</h3>
+                    <p className="text-xs text-[var(--muted)]">This is a {buildingType.toLowerCase()} building. {ownerName} is the homeowners association, not your landlord. Individual units are owned separately — your landlord would be the unit owner. Unit-level ownership data is not yet available.</p>
+                  </div>
+                );
+              }
+
               if (portfolioLoading) return (
                 <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-3">
                   <p className="text-xs text-[var(--muted-dim)]">Looking up owner portfolio...</p>
