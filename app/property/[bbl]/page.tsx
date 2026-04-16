@@ -357,6 +357,62 @@ function PropertyContent({ bbl }: { bbl: string }) {
     load();
   }, [bbl]);
 
+  // Owner portfolio — live lookup
+  interface PortfolioBuilding { bbl: string; address: string }
+  const [portfolio, setPortfolio] = useState<PortfolioBuilding[]>([]);
+  const [portfolioLoading, setPortfolioLoading] = useState(false);
+
+  useEffect(() => {
+    if (!propertyData) return;
+    const ownerName = (propertyData.registration_contacts ?? []).find((c) => c.type === "CorporateOwner")?.corporation_name;
+    if (!ownerName) return;
+
+    async function loadPortfolio() {
+      setPortfolioLoading(true);
+      try {
+        // Find all registrations with same corporate owner
+        const contactsRes = await fetch(
+          `https://data.cityofnewyork.us/resource/feu5-w2e2.json?corporationname=${encodeURIComponent(ownerName!)}&type=CorporateOwner&$limit=100`
+        );
+        if (!contactsRes.ok) return;
+        const contacts: { registrationid?: string }[] = await contactsRes.json();
+
+        // Get current building's registration ID
+        const currentRegId = propertyData!.building_details?.registration_id;
+        const allRegIds = contacts.map((c) => c.registrationid).filter((id): id is string => !!id);
+        const otherRegIds = Array.from(new Set(allRegIds)).filter((id) => id !== currentRegId);
+
+        if (otherRegIds.length === 0) { setPortfolio([]); return; }
+
+        // Look up building addresses for those registration IDs
+        const where = otherRegIds.map((id) => `registrationid='${id}'`).join(" OR ");
+        const regRes = await fetch(
+          `https://data.cityofnewyork.us/resource/tesw-yqqr.json?$where=${encodeURIComponent(where)}&$select=registrationid,boroid,housenumber,streetname,block,lot&$limit=100`
+        );
+        if (!regRes.ok) return;
+        const regs: { boroid?: string; housenumber?: string; streetname?: string; block?: string; lot?: string }[] = await regRes.json();
+
+        const buildings: PortfolioBuilding[] = regs
+          .filter((r) => r.boroid && r.block && r.lot)
+          .map((r) => {
+            const regBbl = `${r.boroid}${String(r.block).padStart(5, "0")}${String(r.lot).padStart(4, "0")}`;
+            const boro = ["", "Manhattan", "Bronx", "Brooklyn", "Queens", "Staten Island"][parseInt(r.boroid!) || 0] || "";
+            return { bbl: regBbl, address: `${r.housenumber} ${r.streetname}, ${boro}` };
+          })
+          .filter((b) => b.bbl !== bbl);
+
+        // Deduplicate by BBL
+        const seen = new Set<string>();
+        setPortfolio(buildings.filter((b) => { if (seen.has(b.bbl)) return false; seen.add(b.bbl); return true; }));
+      } catch {
+        // Silently fail — portfolio is a nice-to-have
+      } finally {
+        setPortfolioLoading(false);
+      }
+    }
+    loadPortfolio();
+  }, [propertyData, bbl]);
+
   function gotoBbl(newBbl: string, q: string, label: string, bin: string, coords: string, hood: string) {
     const params = new URLSearchParams({ q, address: label, bin, coords, hood });
     router.push(`/property/${newBbl}?${params.toString()}`);
@@ -691,6 +747,38 @@ function PropertyContent({ bbl }: { bbl: string }) {
                 </div>
               </div>
             )}
+
+            {/* Owner Portfolio */}
+            {(() => {
+              const ownerName = (propertyData.registration_contacts ?? []).find((c) => c.type === "CorporateOwner")?.corporation_name;
+              if (!ownerName) return null;
+              if (portfolioLoading) return (
+                <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-3">
+                  <p className="text-xs text-[var(--muted-dim)]">Looking up owner portfolio...</p>
+                </div>
+              );
+              if (portfolio.length === 0) return (
+                <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-3">
+                  <h3 className="text-xs font-semibold text-[var(--muted-dim)] uppercase tracking-wide mb-1">Owner Portfolio</h3>
+                  <p className="text-xs text-[var(--muted)]">No other buildings found registered to this owner. Many NYC landlords use separate LLCs for each property.</p>
+                </div>
+              );
+              return (
+                <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-4">
+                  <h3 className="text-xs font-semibold text-[var(--muted-dim)] uppercase tracking-wide mb-2">Owner Portfolio</h3>
+                  <p className="text-xs text-[var(--muted)] mb-2">{ownerName} also operates {portfolio.length} other building{portfolio.length === 1 ? "" : "s"}:</p>
+                  <div className="space-y-1">
+                    {portfolio.slice(0, 10).map((b) => (
+                      <div key={b.bbl} className="flex items-center justify-between">
+                        <Link href={`/property/${b.bbl}`} className="text-xs text-[var(--foreground)] hover:underline truncate">{b.address}</Link>
+                        <span className="text-[10px] text-[var(--muted-dim)] ml-2 shrink-0 font-[family-name:var(--font-geist-mono)]">{b.bbl}</span>
+                      </div>
+                    ))}
+                    {portfolio.length > 10 && <p className="text-[10px] text-[var(--muted-dim)]">...and {portfolio.length - 10} more</p>}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Vacate order banner */}
             {(() => {
