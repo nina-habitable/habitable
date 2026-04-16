@@ -317,6 +317,29 @@ function PaginatedList<T>({
   );
 }
 
+// ─── Collapsible Section ────────────────────────────
+
+function CollapsibleSection({ title, summary, children, defaultOpen = false }: {
+  title: string;
+  summary?: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] overflow-hidden">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-[var(--background)] transition-colors">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-[var(--foreground)]">{title}</h3>
+          {summary && !open && <p className="text-[10px] text-[var(--muted-dim)] mt-0.5 truncate">{summary}</p>}
+        </div>
+        <span className="text-[var(--muted-dim)] ml-2 shrink-0">{open ? "▾" : "▸"}</span>
+      </button>
+      {open && <div className="px-5 pb-4 space-y-4">{children}</div>}
+    </div>
+  );
+}
+
 // ─── Property Page ──────────────────────────────────
 
 function PropertyContent({ bbl }: { bbl: string }) {
@@ -564,7 +587,6 @@ function PropertyContent({ bbl }: { bbl: string }) {
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([agency, count]) => ({ agency, count }));
   }, [filtered311]);
 
-  const open311 = useMemo(() => filtered311.filter((r) => r.status?.toLowerCase() === "open").length, [filtered311]);
 
 
   const filteredLead = useMemo(() => {
@@ -705,94 +727,6 @@ function PropertyContent({ bbl }: { bbl: string }) {
               </div>
             )}
 
-            {/* Building Registration */}
-            {(contacts.owner || contacts.agent || ownerInfo) && (
-              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-4">
-                <h3 className="text-xs font-semibold text-[var(--muted-dim)] uppercase tracking-wide mb-2">Building Registration</h3>
-                <div className="space-y-1.5">
-                  {contacts.owner && (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Owner</span>
-                      <span className="text-sm text-[var(--foreground)]">{contacts.owner.corporation_name || [contacts.owner.first_name, contacts.owner.last_name].filter(Boolean).join(" ")}</span>
-                    </div>
-                  )}
-                  {contacts.agent && (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Agent</span>
-                      <span className="text-sm text-[var(--foreground)]">
-                        {[contacts.agent.first_name, contacts.agent.last_name].filter(Boolean).join(" ")}
-                        {contacts.agent.corporation_name && <span className="text-[var(--muted)]">, {contacts.agent.corporation_name}</span>}
-                      </span>
-                    </div>
-                  )}
-                  {contacts.headOfficer && (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Head Officer</span>
-                      <span className="text-sm text-[var(--foreground)]">{[contacts.headOfficer.first_name, contacts.headOfficer.last_name].filter(Boolean).join(" ")}</span>
-                    </div>
-                  )}
-                  {contacts.siteManager && contacts.siteManager.last_name !== contacts.agent?.last_name && (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Site Manager</span>
-                      <span className="text-sm text-[var(--foreground)]">{[contacts.siteManager.first_name, contacts.siteManager.last_name].filter(Boolean).join(" ")}</span>
-                    </div>
-                  )}
-                  {ownerInfo && !contacts.owner && (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Owner</span>
-                      <span className="text-sm text-[var(--foreground)]">{ownerInfo}</span>
-                    </div>
-                  )}
-                  {ownerInfo && contacts.owner && (
-                    <p className="text-[10px] text-[var(--muted-dim)] mt-1">Also named in HPD litigation: {ownerInfo}</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Owner Portfolio */}
-            {(() => {
-              const ownerName = (propertyData.registration_contacts ?? []).find((c) => c.type === "CorporateOwner")?.corporation_name;
-              if (!ownerName) return null;
-
-              // Condo/co-op: show context instead of portfolio
-              if (buildingType === "Co-op" || buildingType === "Condo" || buildingType === "Condo / co-op") {
-                return (
-                  <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-3">
-                    <h3 className="text-xs font-semibold text-[var(--muted-dim)] uppercase tracking-wide mb-1">Owner Portfolio</h3>
-                    <p className="text-xs text-[var(--muted)]">This is a {buildingType.toLowerCase()} building. {ownerName} is the homeowners association, not your landlord. Individual units are owned separately — your landlord would be the unit owner. Unit-level ownership data is not yet available.</p>
-                  </div>
-                );
-              }
-
-              if (portfolioLoading) return (
-                <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-3">
-                  <p className="text-xs text-[var(--muted-dim)]">Looking up owner portfolio...</p>
-                </div>
-              );
-              if (portfolio.length === 0) return (
-                <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-3">
-                  <h3 className="text-xs font-semibold text-[var(--muted-dim)] uppercase tracking-wide mb-1">Owner Portfolio</h3>
-                  <p className="text-xs text-[var(--muted)]">No other buildings found registered to this owner. Many NYC landlords use separate LLCs for each property.</p>
-                </div>
-              );
-              return (
-                <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-4">
-                  <h3 className="text-xs font-semibold text-[var(--muted-dim)] uppercase tracking-wide mb-2">Owner Portfolio</h3>
-                  <p className="text-xs text-[var(--muted)] mb-2">{ownerName} also operates {portfolio.length} other building{portfolio.length === 1 ? "" : "s"}:</p>
-                  <div className="space-y-1">
-                    {portfolio.slice(0, 10).map((b) => (
-                      <div key={b.bbl} className="flex items-center justify-between">
-                        <Link href={`/property/${b.bbl}`} className="text-xs text-[var(--foreground)] hover:underline truncate">{b.address}</Link>
-                        <span className="text-[10px] text-[var(--muted-dim)] ml-2 shrink-0 font-[family-name:var(--font-geist-mono)]">{b.bbl}</span>
-                      </div>
-                    ))}
-                    {portfolio.length > 10 && <p className="text-[10px] text-[var(--muted-dim)]">...and {portfolio.length - 10} more</p>}
-                  </div>
-                </div>
-              );
-            })()}
-
             {/* Vacate order banner */}
             {(() => {
               const activeVacate = propertyData.vacate_orders.filter((v) => !v.rescind_date);
@@ -924,125 +858,209 @@ function PropertyContent({ bbl }: { bbl: string }) {
               </div>
             )}
 
-            {/* Complaints & litigation summary */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-4 py-3">
-                <p className="text-xs text-[var(--muted-dim)] mb-0.5">Complaints ({timeframeLabel})</p>
-                <p className="text-lg font-bold text-[var(--foreground)]">{filteredComplaintCount}</p>
-                {filteredComplaintCount > 0 && (
-                  <p className="text-[10px] text-[var(--muted-dim)]">
-                    {openComplaintCount > 0 && <span className="text-[#FFB020]">{openComplaintCount} open</span>}
-                    {openComplaintCount > 0 && closedComplaintCount > 0 && " · "}
-                    {closedComplaintCount > 0 && <span>{closedComplaintCount} closed</span>}
-                  </p>
-                )}
-                {complaintCategories.length > 0 && (
-                  <p className="text-[10px] text-[var(--muted-dim)] mt-1">
-                    {complaintCategories.slice(0, 3).map((c) => `${titleCase(c.category)} (${c.count})`).join(", ")}
-                  </p>
-                )}
-              </div>
-              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-4 py-3">
-                <p className="text-xs text-[var(--muted-dim)] mb-0.5">Litigation ({timeframeLabel})</p>
-                <p className="text-lg font-bold text-[var(--foreground)]">{filteredLitigations.length}</p>
-                {filteredLitigations.length > 0 && (
-                  <p className="text-[10px] text-[var(--muted-dim)]">
-                    {pendingLitigation > 0 && <span className="text-[#FFB020]">{pendingLitigation} pending</span>}
-                    {pendingLitigation > 0 && (filteredLitigations.length - pendingLitigation) > 0 && " · "}
-                    {(filteredLitigations.length - pendingLitigation) > 0 && <span>{filteredLitigations.length - pendingLitigation} closed</span>}
-                  </p>
-                )}
-                {litigationTypes.length > 0 && (
-                  <p className="text-[10px] text-[var(--muted-dim)] mt-1">
-                    {litigationTypes.slice(0, 2).map((t) => `${titleCase(t.type)} (${t.count})`).join(", ")}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Bed Bug History */}
-            {filteredBedbugs.length > 0 && (() => {
-              const totalInfested = filteredBedbugs.reduce((s, r) => s + (r.infested_unit_count || 0), 0);
-              const totalEradicated = filteredBedbugs.reduce((s, r) => s + (r.eradicated_unit_count || 0), 0);
-              const hasActive = filteredBedbugs.some((r) => r.infested_unit_count > 0);
-              return (
-                <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5">
-                  <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">Bed Bug History</h3>
-                  {hasActive ? (
-                    <div className="rounded-lg border border-[#3D2E0A] bg-[#2E2810] px-3 py-2 mb-3"><p className="text-sm text-[#FFB020]">Bed bugs have been reported in this building.</p></div>
-                  ) : totalInfested === 0 ? (
-                    <div className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-3 py-2 mb-3"><p className="text-sm text-[var(--muted)]">No active infestations reported.{totalEradicated > 0 && ` ${totalEradicated} unit${totalEradicated === 1 ? "" : "s"} previously treated.`}</p></div>
-                  ) : null}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div><p className="text-lg font-bold text-[var(--foreground)]">{filteredBedbugs.length}</p><p className="text-[10px] text-[var(--muted-dim)]">Annual filings</p></div>
-                    <div><p className="text-lg font-bold text-[var(--foreground)]">{formatDate(filteredBedbugs[0].filing_date)}</p><p className="text-[10px] text-[var(--muted-dim)]">Most recent filing</p></div>
-                    <div><p className="text-lg font-bold text-[var(--foreground)]">{totalEradicated > 0 ? totalEradicated : totalInfested}</p><p className="text-[10px] text-[var(--muted-dim)]">{totalEradicated > 0 ? "Units treated" : "Infested units"}</p></div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Lead Paint */}
-            {filteredLead.length > 0 && (
-              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5">
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">Lead Paint Violations</h3>
-                {openLeadCount > 0 ? (
-                  <p className="text-sm font-medium text-[var(--foreground)] mb-2">{openLeadCount} open lead paint violation{openLeadCount === 1 ? "" : "s"} — critical for families with children</p>
-                ) : (
-                  <p className="text-xs text-[var(--muted)] mb-2">No open lead paint violations. {filteredLead.length} {filteredLead.length === 1 ? "was" : "were"} previously issued and resolved.</p>
-                )}
-                <p className="text-[10px] text-[var(--muted-dim)]">{filteredLead.length} total lead violation{filteredLead.length === 1 ? "" : "s"} ({timeframeLabel})</p>
-              </div>
-            )}
-
-            {/* Emergency Work Orders */}
-            {filteredWorkOrders.length > 0 && (
-              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5">
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">Emergency Repairs</h3>
-                <p className="text-sm text-[var(--muted)] mb-2">
-                  The city performed {filteredWorkOrders.length} emergency repair{filteredWorkOrders.length === 1 ? "" : "s"}
-                  {totalWorkOrderAmount > 0 && ` costing $${Math.round(totalWorkOrderAmount).toLocaleString()}`} because the landlord failed to act.
-                </p>
-                {(() => {
-                  const typeCounts: Record<string, number> = {};
-                  for (const o of filteredWorkOrders) { typeCounts[o.work_type || "Other"] = (typeCounts[o.work_type || "Other"] || 0) + 1; }
-                  const types = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
-                  return types.length > 0 ? (
+            {/* ─── Collapsible: Complaints & Litigation ─── */}
+            <CollapsibleSection
+              title="Complaints & Litigation"
+              summary={`${filteredComplaintCount} complaint${filteredComplaintCount === 1 ? "" : "s"} · ${filteredLitigations.length} litigation`}
+            >
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-4 py-3">
+                  <p className="text-xs text-[var(--muted-dim)] mb-0.5">Complaints ({timeframeLabel})</p>
+                  <p className="text-lg font-bold text-[var(--foreground)]">{filteredComplaintCount}</p>
+                  {filteredComplaintCount > 0 && (
                     <p className="text-[10px] text-[var(--muted-dim)]">
-                      {(() => {
-                        const labels: Record<string, string> = { GC: "General construction", DELEAD: "Lead removal", PLUMB: "Plumbing", ELEC: "Electrical", HEAT: "Heating", PAINT: "Painting", LOCKSMITH: "Locksmith", ASBEST: "Asbestos removal", ENGINR: "Engineering", CARP: "Carpentry", MASON: "Masonry", ROOF: "Roofing", IRON: "Ironwork", EXTERMIN: "Extermination" };
-                        return `Work types: ${types.map(([t, c]) => `${labels[t.toUpperCase()] || titleCase(t)} (${c})`).join(", ")}`;
-                      })()}
+                      {openComplaintCount > 0 && <span className="text-[#FFB020]">{openComplaintCount} open</span>}
+                      {openComplaintCount > 0 && closedComplaintCount > 0 && " · "}
+                      {closedComplaintCount > 0 && <span>{closedComplaintCount} closed</span>}
                     </p>
-                  ) : null;
-                })()}
+                  )}
+                  {complaintCategories.length > 0 && (
+                    <p className="text-[10px] text-[var(--muted-dim)] mt-1">
+                      {complaintCategories.slice(0, 3).map((c) => `${titleCase(c.category)} (${c.count})`).join(", ")}
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-4 py-3">
+                  <p className="text-xs text-[var(--muted-dim)] mb-0.5">Litigation ({timeframeLabel})</p>
+                  <p className="text-lg font-bold text-[var(--foreground)]">{filteredLitigations.length}</p>
+                  {filteredLitigations.length > 0 && (
+                    <p className="text-[10px] text-[var(--muted-dim)]">
+                      {pendingLitigation > 0 && <span className="text-[#FFB020]">{pendingLitigation} pending</span>}
+                      {pendingLitigation > 0 && (filteredLitigations.length - pendingLitigation) > 0 && " · "}
+                      {(filteredLitigations.length - pendingLitigation) > 0 && <span>{filteredLitigations.length - pendingLitigation} closed</span>}
+                    </p>
+                  )}
+                  {litigationTypes.length > 0 && (
+                    <p className="text-[10px] text-[var(--muted-dim)] mt-1">
+                      {litigationTypes.slice(0, 2).map((t) => `${titleCase(t.type)} (${t.count})`).join(", ")}
+                    </p>
+                  )}
+                </div>
               </div>
-            )}
+            </CollapsibleSection>
 
-            {/* Other Agency Reports (311) */}
-            {filtered311.length > 0 && (
-              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-4 py-3">
-                <p className="text-xs text-[var(--muted-dim)] mb-0.5">311 Reports ({timeframeLabel})</p>
-                <p className="text-lg font-bold text-[var(--foreground)]">{filtered311.length}</p>
-                {filtered311.length > 0 && (
-                  <p className="text-[10px] text-[var(--muted-dim)]">
-                    {open311 > 0 && <span className="text-[#FFB020]">{open311} open</span>}
-                    {open311 > 0 && (filtered311.length - open311) > 0 && " · "}
-                    {(filtered311.length - open311) > 0 && <span>{filtered311.length - open311} closed</span>}
-                  </p>
-                )}
-                {agencyBreakdown311.length > 0 && (
-                  <p className="text-[10px] text-[var(--muted-dim)] mt-1">
-                    {agencyBreakdown311.map((a) => {
-                      const names: Record<string, string> = { DOB: "Dept. of Buildings", FDNY: "Fire Dept.", DEP: "Environmental Protection", DOHMH: "Health Dept." };
-                      return `${names[a.agency] || a.agency} (${a.count})`;
-                    }).join(", ")}
-                  </p>
-                )}
-              </div>
-            )}
+            {/* ─── Collapsible: Building History ─── */}
+            <CollapsibleSection
+              title="Building History"
+              summary={[
+                openLeadCount > 0 ? `Lead paint: ${openLeadCount} open` : null,
+                filteredWorkOrders.length > 0 ? `Emergency repairs: ${filteredWorkOrders.length}` : null,
+                filteredBedbugs.length > 0 ? `Bed bug filings: ${filteredBedbugs.length}` : null,
+                filtered311.length > 0 ? `311 reports: ${filtered311.length}` : null,
+              ].filter(Boolean).join(" · ") || "No additional history"}
+            >
+              {/* Bed Bug History */}
+              {filteredBedbugs.length > 0 && (() => {
+                const totalInfested = filteredBedbugs.reduce((s, r) => s + (r.infested_unit_count || 0), 0);
+                const totalEradicated = filteredBedbugs.reduce((s, r) => s + (r.eradicated_unit_count || 0), 0);
+                const hasActive = filteredBedbugs.some((r) => r.infested_unit_count > 0);
+                return (
+                  <div>
+                    <h4 className="text-xs font-semibold text-[var(--foreground)] mb-2">Bed Bug History</h4>
+                    {hasActive ? (
+                      <div className="rounded-lg border border-[#3D2E0A] bg-[#2E2810] px-3 py-2 mb-2"><p className="text-sm text-[#FFB020]">Bed bugs have been reported in this building.</p></div>
+                    ) : totalInfested === 0 ? (
+                      <p className="text-xs text-[var(--muted)] mb-2">No active infestations.{totalEradicated > 0 && ` ${totalEradicated} unit${totalEradicated === 1 ? "" : "s"} previously treated.`}</p>
+                    ) : null}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div><p className="text-lg font-bold text-[var(--foreground)]">{filteredBedbugs.length}</p><p className="text-[10px] text-[var(--muted-dim)]">Annual filings</p></div>
+                      <div><p className="text-lg font-bold text-[var(--foreground)]">{formatDate(filteredBedbugs[0].filing_date)}</p><p className="text-[10px] text-[var(--muted-dim)]">Most recent</p></div>
+                      <div><p className="text-lg font-bold text-[var(--foreground)]">{totalEradicated > 0 ? totalEradicated : totalInfested}</p><p className="text-[10px] text-[var(--muted-dim)]">{totalEradicated > 0 ? "Treated" : "Infested"}</p></div>
+                    </div>
+                  </div>
+                );
+              })()}
 
-            {/* ─── Deep Dive Tabs ─── */}
+              {/* Lead Paint */}
+              {filteredLead.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-[var(--foreground)] mb-2">Lead Paint Violations</h4>
+                  {openLeadCount > 0 ? (
+                    <p className="text-sm font-medium text-[var(--foreground)] mb-1">{openLeadCount} open lead paint violation{openLeadCount === 1 ? "" : "s"} — critical for families with children</p>
+                  ) : (
+                    <p className="text-xs text-[var(--muted)] mb-1">No open lead paint violations. {filteredLead.length} previously resolved.</p>
+                  )}
+                  <p className="text-[10px] text-[var(--muted-dim)]">{filteredLead.length} total ({timeframeLabel})</p>
+                </div>
+              )}
+
+              {/* Emergency Work Orders */}
+              {filteredWorkOrders.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-[var(--foreground)] mb-2">Emergency Repairs</h4>
+                  <p className="text-xs text-[var(--muted)] mb-1">
+                    {filteredWorkOrders.length} repair{filteredWorkOrders.length === 1 ? "" : "s"}
+                    {totalWorkOrderAmount > 0 && ` · $${Math.round(totalWorkOrderAmount).toLocaleString()}`}
+                  </p>
+                  {(() => {
+                    const typeCounts: Record<string, number> = {};
+                    for (const o of filteredWorkOrders) { typeCounts[o.work_type || "Other"] = (typeCounts[o.work_type || "Other"] || 0) + 1; }
+                    const types = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+                    const labels: Record<string, string> = { GC: "General construction", DELEAD: "Lead removal", PLUMB: "Plumbing", ELEC: "Electrical", HEAT: "Heating", PAINT: "Painting", LOCKSMITH: "Locksmith", ASBEST: "Asbestos removal", ENGINR: "Engineering", CARP: "Carpentry", MASON: "Masonry", ROOF: "Roofing", IRON: "Ironwork", EXTERMIN: "Extermination" };
+                    return types.length > 0 ? <p className="text-[10px] text-[var(--muted-dim)]">{types.map(([t, c]) => `${labels[t.toUpperCase()] || titleCase(t)} (${c})`).join(", ")}</p> : null;
+                  })()}
+                </div>
+              )}
+
+              {/* 311 Reports */}
+              {filtered311.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-[var(--foreground)] mb-2">311 Reports</h4>
+                  <p className="text-xs text-[var(--muted)]">{filtered311.length} report{filtered311.length === 1 ? "" : "s"} ({timeframeLabel})</p>
+                  {agencyBreakdown311.length > 0 && (
+                    <p className="text-[10px] text-[var(--muted-dim)] mt-1">
+                      {agencyBreakdown311.map((a) => {
+                        const names: Record<string, string> = { DOB: "Dept. of Buildings", FDNY: "Fire Dept.", DEP: "Environmental Protection", DOHMH: "Health Dept." };
+                        return `${names[a.agency] || a.agency} (${a.count})`;
+                      }).join(", ")}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {filteredBedbugs.length === 0 && filteredLead.length === 0 && filteredWorkOrders.length === 0 && filtered311.length === 0 && (
+                <p className="text-xs text-[var(--muted)]">No additional building history {timeframe === "recent" ? "in the last 2 years" : "on record"}.</p>
+              )}
+            </CollapsibleSection>
+
+            {/* ─── Collapsible: Ownership ─── */}
+            <CollapsibleSection
+              title="Ownership"
+              summary={contacts.owner?.corporation_name || ownerInfo || "No registration data"}
+            >
+              {/* Registration */}
+              {(contacts.owner || contacts.agent || ownerInfo) && (
+                <div className="space-y-1.5">
+                  {contacts.owner && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Owner</span>
+                      <span className="text-sm text-[var(--foreground)]">{contacts.owner.corporation_name || [contacts.owner.first_name, contacts.owner.last_name].filter(Boolean).join(" ")}</span>
+                    </div>
+                  )}
+                  {contacts.agent && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Agent</span>
+                      <span className="text-sm text-[var(--foreground)]">
+                        {[contacts.agent.first_name, contacts.agent.last_name].filter(Boolean).join(" ")}
+                        {contacts.agent.corporation_name && <span className="text-[var(--muted)]">, {contacts.agent.corporation_name}</span>}
+                      </span>
+                    </div>
+                  )}
+                  {contacts.headOfficer && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Head Officer</span>
+                      <span className="text-sm text-[var(--foreground)]">{[contacts.headOfficer.first_name, contacts.headOfficer.last_name].filter(Boolean).join(" ")}</span>
+                    </div>
+                  )}
+                  {contacts.siteManager && contacts.siteManager.last_name !== contacts.agent?.last_name && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Site Manager</span>
+                      <span className="text-sm text-[var(--foreground)]">{[contacts.siteManager.first_name, contacts.siteManager.last_name].filter(Boolean).join(" ")}</span>
+                    </div>
+                  )}
+                  {ownerInfo && !contacts.owner && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Owner</span>
+                      <span className="text-sm text-[var(--foreground)]">{ownerInfo}</span>
+                    </div>
+                  )}
+                  {ownerInfo && contacts.owner && (
+                    <p className="text-[10px] text-[var(--muted-dim)] mt-1">Also named in HPD litigation: {ownerInfo}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Portfolio */}
+              {(() => {
+                const ownerName = contacts.owner?.corporation_name;
+                if (!ownerName) return null;
+                if (buildingType === "Co-op" || buildingType === "Condo" || buildingType === "Condo / co-op") {
+                  return <p className="text-xs text-[var(--muted)]">This is a {buildingType.toLowerCase()} building. {ownerName} is the homeowners association. Individual units are owned separately.</p>;
+                }
+                if (portfolioLoading) return <p className="text-xs text-[var(--muted-dim)]">Looking up owner portfolio...</p>;
+                if (portfolio.length === 0) return <p className="text-xs text-[var(--muted)]">No other buildings found registered to this owner.</p>;
+                return (
+                  <div>
+                    <p className="text-xs text-[var(--muted)] mb-2">{ownerName} also operates {portfolio.length} other building{portfolio.length === 1 ? "" : "s"}:</p>
+                    <div className="space-y-1">
+                      {portfolio.slice(0, 10).map((b) => (
+                        <div key={b.bbl} className="flex items-center justify-between">
+                          <Link href={`/property/${b.bbl}`} className="text-xs text-[var(--foreground)] hover:underline truncate">{b.address}</Link>
+                          <span className="text-[10px] text-[var(--muted-dim)] ml-2 shrink-0 font-[family-name:var(--font-geist-mono)]">{b.bbl}</span>
+                        </div>
+                      ))}
+                      {portfolio.length > 10 && <p className="text-[10px] text-[var(--muted-dim)]">...and {portfolio.length - 10} more</p>}
+                    </div>
+                  </div>
+                );
+              })()}
+            </CollapsibleSection>
+
+            {/* ─── Collapsible: Violation Details ─── */}
+            <CollapsibleSection
+              title="Violation Details"
+              summary={`${filteredViolations.length} open violation${filteredViolations.length === 1 ? "" : "s"}`}
+            >
             <div>
               <div className="flex items-center gap-1 bg-[var(--card)] rounded-lg p-1 border border-[var(--card-border)] w-fit mb-4 flex-wrap">
                 {(["violations", "complaints", "litigation", "311"] as const).map((tab) => (
@@ -1132,6 +1150,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
                 )
               )}
             </div>
+            </CollapsibleSection>
 
             {/* Data freshness + disclaimer */}
             <div className="space-y-2 py-2">
