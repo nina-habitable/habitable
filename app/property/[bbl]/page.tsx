@@ -456,7 +456,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
       try {
         // Step 1: Get document IDs for this property
         const lotsRes = await fetch(
-          `https://data.cityofnewyork.us/resource/8h5j-fqxa.json?borough=${borough}&block=${block}&lot=${lot}&$limit=30&$order=good_through_date DESC`
+          `https://data.cityofnewyork.us/resource/8h5j-fqxa.json?borough=${borough}&block=${block}&lot=${lot}&$limit=200&$order=good_through_date DESC`
         );
         if (!lotsRes.ok) return;
         const lots: { document_id?: string }[] = await lotsRes.json();
