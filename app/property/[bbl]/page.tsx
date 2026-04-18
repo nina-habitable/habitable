@@ -458,22 +458,27 @@ function PropertyContent({ bbl }: { bbl: string }) {
         const lotsRes = await fetch(
           `https://data.cityofnewyork.us/resource/8h5j-fqxa.json?borough=${borough}&block=${block}&lot=${lot}&$limit=200&$order=good_through_date DESC`
         );
-        if (!lotsRes.ok) return;
+        if (!lotsRes.ok) { console.log("[ACRIS] Legals fetch failed:", lotsRes.status); return; }
         const lots: { document_id?: string }[] = await lotsRes.json();
-        const docIds = Array.from(new Set(lots.map((l) => l.document_id).filter((id): id is string => !!id))).slice(0, 15);
-        if (docIds.length === 0) return;
+        const docIds = Array.from(new Set(lots.map((l) => l.document_id).filter((id): id is string => !!id)));
+        console.log("[ACRIS] Legals count:", lots.length, "Unique doc IDs:", docIds.length);
+        const docIdsBatch = docIds.slice(0, 50);
+        if (docIdsBatch.length === 0) return;
 
         // Step 2: Find deed documents
-        const where = docIds.map((id) => `document_id='${id}'`).join(" OR ");
+        const where = docIdsBatch.map((id) => `document_id='${id}'`).join(" OR ");
         const docsRes = await fetch(
-          `https://data.cityofnewyork.us/resource/bnx9-e6tj.json?$where=${encodeURIComponent(where)}&$select=document_id,doc_type,document_amt,recorded_datetime&$limit=200`
+          `https://data.cityofnewyork.us/resource/bnx9-e6tj.json?$where=${encodeURIComponent(where)}&$select=document_id,doc_type,document_amt,recorded_datetime&$limit=500`
         );
-        if (!docsRes.ok) return;
+        if (!docsRes.ok) { console.log("[ACRIS] Master fetch failed:", docsRes.status); return; }
         const docs: { document_id?: string; doc_type?: string; document_amt?: string; recorded_datetime?: string }[] = await docsRes.json();
+        console.log("[ACRIS] Master results:", docs.length, "Doc types:", docs.map(d => d.doc_type));
         const deedDocs = docs
           .filter((d) => d.doc_type === "DEED" || d.doc_type === "DEEDO")
           .sort((a, b) => (b.recorded_datetime || "").localeCompare(a.recorded_datetime || ""));
-        if (deedDocs.length === 0) return;
+        console.log("[ACRIS] Deeds found:", deedDocs.length, deedDocs.map(d => ({ id: d.document_id, date: d.recorded_datetime, amt: d.document_amt })));
+        if (deedDocs.length === 0) { console.log("[ACRIS] No deeds found"); return; }
+        console.log("[ACRIS] Most recent deed:", deedDocs[0]);
 
         // Step 3: Get parties for each deed
         const results: DeedRecord[] = [];
