@@ -630,18 +630,10 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
   }, [propertyData, timeframe]);
 
   // Open violations only (excludes closed, dismissed, and pending)
-  const filteredViolations = useMemo(() => {
-    const result = timeframeViolations.filter((v) => isOpenViolation(v.status));
-    const excluded = timeframeViolations.filter((v) => !isOpenViolation(v.status));
-    const excludedStatuses: Record<string, number> = {};
-    for (const v of excluded) { excludedStatuses[v.status || "null"] = (excludedStatuses[v.status || "null"] || 0) + 1; }
-    console.log("[DEBUG] Total violations:", timeframeViolations.length);
-    console.log("[DEBUG] After filter (open):", result.length);
-    console.log("[DEBUG] Excluded count:", excluded.length);
-    console.log("[DEBUG] Excluded statuses:", excludedStatuses);
-    console.log("[DEBUG] CLOSED_STATUSES:", Array.from(CLOSED_STATUSES));
-    return result;
-  }, [timeframeViolations]);
+  const filteredViolations = useMemo(() =>
+    timeframeViolations.filter((v) => isOpenViolation(v.status)),
+    [timeframeViolations]
+  );
 
   const actionRequiredCount = useMemo(() =>
     filteredViolations.filter((v) => requiresAction(v.status)).length,
