@@ -86,6 +86,7 @@ export interface PropertyResponse {
   lead_violations?: LeadViolation[];
   work_orders?: WorkOrder[];
   from_cache: boolean;
+  fetch_errors?: string[];
   address_label?: string;
   nta?: string | null;
 }

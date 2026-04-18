@@ -835,6 +835,12 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
         {loadingProperty && <p className="text-center text-sm text-[var(--muted)] py-12">Loading building data...</p>}
         {error && <div className="rounded-xl border border-red-900 bg-red-950 px-4 py-3 text-sm text-red-400">{error}</div>}
 
+        {propertyData?.fetch_errors && propertyData.fetch_errors.length > 0 && (
+          <div className="rounded-xl border border-[#3D2E0A] bg-[#2E2810] px-4 py-3 mb-4 text-sm text-[#FFB020]">
+            Some data sources are temporarily unavailable. Results may be incomplete — try again in a few minutes.
+          </div>
+        )}
+
         {propertyData && (
           <div className="space-y-5">
             {/* Address header + building info */}
