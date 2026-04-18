@@ -392,7 +392,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
   const [showOlderDeeds, setShowOlderDeeds] = useState(false);
 
   // ACRIS LLC linking
-  interface LinkedProperty { bbl: string; address: string; date: string }
+  interface LinkedProperty { bbl: string; address: string; date: string; confirmed: boolean }
   const [linkedProperties, setLinkedProperties] = useState<LinkedProperty[]>([]);
   const [linkedName, setLinkedName] = useState("");
 
@@ -519,52 +519,66 @@ function PropertyContent({ bbl }: { bbl: string }) {
     const nameB = `${first} ${last}`;
     setLinkedName(`${person.first_name} ${person.last_name}`);
 
+    // Get head officer's business zip for address matching
+    const hoZip = person.business_address?.match(/\d{5}$/)?.[0] || "";
+
     async function loadLinked() {
       try {
-        // Find all purchases by this person — query both name formats
+        // Find all purchases by this person — query both name formats, include address for matching
         const [resA, resB] = await Promise.all([
-          fetch(`https://data.cityofnewyork.us/resource/636b-3b5g.json?name=${encodeURIComponent(nameA)}&party_type=2&$limit=50&$select=document_id`),
-          fetch(`https://data.cityofnewyork.us/resource/636b-3b5g.json?name=${encodeURIComponent(nameB)}&party_type=2&$limit=50&$select=document_id`),
+          fetch(`https://data.cityofnewyork.us/resource/636b-3b5g.json?name=${encodeURIComponent(nameA)}&party_type=2&$limit=50&$select=document_id,zip`),
+          fetch(`https://data.cityofnewyork.us/resource/636b-3b5g.json?name=${encodeURIComponent(nameB)}&party_type=2&$limit=50&$select=document_id,zip`),
         ]);
-        const partiesA: { document_id?: string }[] = resA.ok ? await resA.json() : [];
-        const partiesB: { document_id?: string }[] = resB.ok ? await resB.json() : [];
+        const partiesA: { document_id?: string; zip?: string }[] = resA.ok ? await resA.json() : [];
+        const partiesB: { document_id?: string; zip?: string }[] = resB.ok ? await resB.json() : [];
         const allParties = [...partiesA, ...partiesB];
+        // Build zip lookup per document_id
+        const partyZipMap = new Map<string, string>();
+        for (const p of allParties) {
+          if (p.document_id && p.zip) partyZipMap.set(p.document_id, p.zip);
+        }
         const docIds = Array.from(new Set(allParties.map((p) => p.document_id).filter((id): id is string => !!id)));
         if (docIds.length === 0) return;
 
-        // Batch lookup property addresses
+        // Batch lookup property addresses and dates
         const where = docIds.slice(0, 30).map((id) => `document_id='${id}'`).join(" OR ");
-        const legalsRes = await fetch(
-          `https://data.cityofnewyork.us/resource/8h5j-fqxa.json?$where=${encodeURIComponent(where)}&$limit=200`
-        );
+        const [legalsRes, masterRes] = await Promise.all([
+          fetch(`https://data.cityofnewyork.us/resource/8h5j-fqxa.json?$where=${encodeURIComponent(where)}&$limit=200`),
+          fetch(`https://data.cityofnewyork.us/resource/bnx9-e6tj.json?$where=${encodeURIComponent(where)}&$select=document_id,recorded_datetime&$limit=200`),
+        ]);
         if (!legalsRes.ok) return;
         const legals: { document_id?: string; borough?: string; block?: string; lot?: string; street_number?: string; street_name?: string }[] = await legalsRes.json();
-
-        // Also get deed dates
-        const masterRes = await fetch(
-          `https://data.cityofnewyork.us/resource/bnx9-e6tj.json?$where=${encodeURIComponent(where)}&$select=document_id,recorded_datetime&$limit=200`
-        );
         const masterDocs: { document_id?: string; recorded_datetime?: string }[] = masterRes.ok ? await masterRes.json() : [];
         const dateMap = new Map(masterDocs.map((d) => [d.document_id, d.recorded_datetime || ""]));
 
         const boroNames = ["", "Manhattan", "Bronx", "Brooklyn", "Queens", "Staten Island"];
         const seen = new Set<string>();
         const results: LinkedProperty[] = [];
+        const cutoff = "2006-01-01";
 
         for (const l of legals) {
           if (!l.borough || !l.block || !l.lot) continue;
           const linkedBbl = `${l.borough}${String(l.block).padStart(5, "0")}${String(l.lot).padStart(4, "0")}`;
           if (linkedBbl === bbl || seen.has(linkedBbl)) continue;
+          const deedDate = dateMap.get(l.document_id || "") || "";
+          // Filter: only last 20 years
+          if (deedDate && deedDate < cutoff) continue;
           seen.add(linkedBbl);
           const addr = [l.street_number, l.street_name].filter(Boolean).join(" ");
           const boro = boroNames[parseInt(l.borough) || 0] || "";
+          // Address confirmation: match zip codes
+          const partyZip = partyZipMap.get(l.document_id || "") || "";
+          const confirmed = !!(hoZip && partyZip && hoZip === partyZip);
           results.push({
             bbl: linkedBbl,
             address: addr ? `${addr}, ${boro}` : `${boro} (BBL: ${linkedBbl})`,
-            date: dateMap.get(l.document_id || "") || "",
+            date: deedDate,
+            confirmed,
           });
         }
 
+        // Sort: confirmed first, then by date descending
+        results.sort((a, b) => (a.confirmed === b.confirmed ? (b.date || "").localeCompare(a.date || "") : a.confirmed ? -1 : 1));
         setLinkedProperties(results.slice(0, 20));
       } catch {
         // Fail silently
@@ -1041,12 +1055,13 @@ function PropertyContent({ bbl }: { bbl: string }) {
                         <Link href={`/property/${lp.bbl}`} className="text-xs text-[var(--foreground)] hover:underline truncate">
                           {lp.address}
                           {lp.date && <span className="text-[var(--muted-dim)]"> · {formatDate(lp.date)}</span>}
+                          {lp.confirmed && <span className="text-[10px] text-green-500 ml-1">✓</span>}
                         </Link>
                         <span className="text-[10px] text-[var(--muted-dim)] ml-2 shrink-0 font-[family-name:var(--font-geist-mono)]">{lp.bbl}</span>
                       </div>
                     ))}
                   </div>
-                  <p className="text-[10px] text-[var(--muted-dim)] mt-2">Properties linked by owner name — some may belong to a different person with the same name.</p>
+                  <p className="text-[10px] text-[var(--muted-dim)] mt-2">Properties linked by owner name match. Results from the last 20 years — older transactions excluded. Some may belong to a different person with the same name.</p>
                 </div>
               )}
 
