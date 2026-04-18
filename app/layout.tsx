@@ -14,8 +14,9 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Habitable",
-  description: "Look up any NYC address to see HPD violations, complaints, and building safety data — in plain English.",
+  title: { default: "Habitable", template: "%s" },
+  description: "Look up any NYC building before you sign a lease. Violations, complaints, ownership, and safety data in plain English.",
+  metadataBase: new URL("https://habitable-xi.vercel.app"),
 };
 
 export default function RootLayout({
