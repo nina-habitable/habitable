@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
   const geoBin = request.nextUrl.searchParams.get("bin");
   const geoHood = request.nextUrl.searchParams.get("hood");
 
-  console.log("[/api/property] called with bbl:", bbl);
 
   if (!bbl) {
     return NextResponse.json({ error: "BBL parameter is required" }, { status: 400 });
@@ -63,7 +62,6 @@ export async function GET(request: NextRequest) {
         supabaseAdmin.from("work_orders").select("*").eq("bbl", bbl),
       ]);
 
-      console.log(`[/api/property] Cache hit for ${bbl}: violations=${cached.length}, complaints=${(cachedComplaints.data ?? []).length}, building_details=${!!cachedBuildingDetails.data}`);
 
       const cachedComplaintsList = cachedComplaints.data ?? [];
       const cachedUniqueComplaints = new Set(cachedComplaintsList.map((c: Record<string, string>) => c.complaint_id));
@@ -146,14 +144,12 @@ export async function GET(request: NextRequest) {
     // Fallback: look up buildingid via BIN from HPD Buildings dataset
     const bin = violations[0]?.bin || geoBin;
     if (!buildingId && bin) {
-      console.log(`[/api/property] No buildingId from data, looking up via BIN=${bin}`);
       const binLookup = await safeFetch(
         `https://data.cityofnewyork.us/resource/kj4p-ruqc.json?bin=${encodeURIComponent(bin)}&$limit=1`,
         "HPD Buildings (BIN lookup)"
       );
       if (binLookup[0]?.buildingid) {
         buildingId = binLookup[0].buildingid;
-        console.log(`[/api/property] Found buildingId=${buildingId} from BIN=${bin}`);
       }
     }
 
@@ -165,7 +161,6 @@ export async function GET(request: NextRequest) {
     // Prefer Geosearch neighbourhood (clean single name) over violation NTA (combined)
     const nta = geoHood || firstViolation?.nta || null;
 
-    console.log(`[/api/property] Fetched: ${violations.length} violations, ${vacateOrders.length} vacate orders, ${complaints.length} complaints, buildingId=${buildingId}, bin=${bin}`)
 
     // Fetch litigation, bedbug, building details, and registration if we have a building_id
     let litigations: Record<string, string>[] = [];
@@ -196,13 +191,11 @@ export async function GET(request: NextRequest) {
 
       // Chain: fetch contacts using registrationid from registration response
       const registrationId = registrationRaw[0]?.registrationid || buildingDetailsRaw[0]?.registrationid;
-      console.log(`[/api/property] registrationId=${registrationId}, registrationRaw=${registrationRaw.length}, buildingDetailsRaw=${buildingDetailsRaw.length}`);
       if (registrationId) {
         contactsRaw = await safeFetch(
           `https://data.cityofnewyork.us/resource/feu5-w2e2.json?registrationid=${encodeURIComponent(registrationId)}&$limit=20`,
           "Registration Contacts"
         );
-        console.log(`[/api/property] contactsRaw=${contactsRaw.length}, first id=${contactsRaw[0]?.registrationcontactid}`);
       }
     }
 
@@ -344,7 +337,6 @@ export async function GET(request: NextRequest) {
     }
 
     if (complaints.length > 0) {
-      console.log(`[/api/property] Writing ${complaints.length} complaints for bbl ${bbl}`);
       const rows = complaints.map((v) => ({
         id: v.problem_id,
         bbl: bbl,
@@ -379,7 +371,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`[/api/property] Fetched: ${litigations.length} litigations, ${bedbugs.length} bedbug reports`);
 
     if (bedbugs.length > 0) {
       const rows = bedbugs.map((v, i) => ({
@@ -398,27 +389,21 @@ export async function GET(request: NextRequest) {
     }
 
     if (buildingDetail) {
-      console.log(`[/api/property] Writing building_details: building_id=${buildingDetail.building_id}, units=${buildingDetail.legal_class_a}`);
       writePromises.push(
         supabaseAdmin.from("building_details").upsert(buildingDetail, { onConflict: "id" }).then(({ error }) => {
           if (error) console.error("Supabase building_details upsert error:", JSON.stringify(error));
-          else console.log("[/api/property] building_details write SUCCESS");
         })
       );
     } else {
-      console.log("[/api/property] No building_details to write (buildingDetailsRaw empty)");
     }
 
-    console.log(`[/api/property] mappedContacts.length=${mappedContacts.length}, first=${JSON.stringify(mappedContacts[0]?.id)}`);
     if (mappedContacts.length > 0) {
-      console.log(`[/api/property] Writing ${mappedContacts.length} registration_contacts`);
       const { error: contactsError } = await supabaseAdmin
         .from("registration_contacts")
         .upsert(mappedContacts, { onConflict: "id" });
       if (contactsError) {
         console.error("Supabase registration_contacts upsert error:", JSON.stringify(contactsError));
       } else {
-        console.log("[/api/property] registration_contacts write SUCCESS");
       }
     }
 
