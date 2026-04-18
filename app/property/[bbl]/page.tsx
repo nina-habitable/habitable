@@ -826,6 +826,76 @@ function PropertyContent({ bbl }: { bbl: string }) {
               </div>
             )}
 
+            {/* ─── Collapsible: Who owns this building? ─── */}
+            <CollapsibleSection
+              title="Who owns this building?"
+              summary={contacts.owner?.corporation_name || ownerInfo || "No registration data"}
+            >
+              {(contacts.owner || contacts.agent || ownerInfo) && (
+                <div className="space-y-1.5">
+                  {contacts.owner && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Owner</span>
+                      <span className="text-sm text-[var(--foreground)]">{contacts.owner.corporation_name || [contacts.owner.first_name, contacts.owner.last_name].filter(Boolean).join(" ")}</span>
+                    </div>
+                  )}
+                  {contacts.agent && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Agent</span>
+                      <span className="text-sm text-[var(--foreground)]">
+                        {[contacts.agent.first_name, contacts.agent.last_name].filter(Boolean).join(" ")}
+                        {contacts.agent.corporation_name && <span className="text-[var(--muted)]">, {contacts.agent.corporation_name}</span>}
+                      </span>
+                    </div>
+                  )}
+                  {contacts.headOfficer && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Head Officer</span>
+                      <span className="text-sm text-[var(--foreground)]">{[contacts.headOfficer.first_name, contacts.headOfficer.last_name].filter(Boolean).join(" ")}</span>
+                    </div>
+                  )}
+                  {contacts.siteManager && contacts.siteManager.last_name !== contacts.agent?.last_name && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Site Manager</span>
+                      <span className="text-sm text-[var(--foreground)]">{[contacts.siteManager.first_name, contacts.siteManager.last_name].filter(Boolean).join(" ")}</span>
+                    </div>
+                  )}
+                  {ownerInfo && !contacts.owner && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Owner</span>
+                      <span className="text-sm text-[var(--foreground)]">{ownerInfo}</span>
+                    </div>
+                  )}
+                  {ownerInfo && contacts.owner && (
+                    <p className="text-[10px] text-[var(--muted-dim)] mt-1">Also named in HPD litigation: {ownerInfo}</p>
+                  )}
+                </div>
+              )}
+              {(() => {
+                const ownerName = contacts.owner?.corporation_name;
+                if (!ownerName) return null;
+                if (buildingType === "Co-op" || buildingType === "Condo" || buildingType === "Condo / co-op") {
+                  return <p className="text-xs text-[var(--muted)]">This is a {buildingType.toLowerCase()} building. {ownerName} is the homeowners association. Individual units are owned separately.</p>;
+                }
+                if (portfolioLoading) return <p className="text-xs text-[var(--muted-dim)]">Looking up owner portfolio...</p>;
+                if (portfolio.length === 0) return <p className="text-xs text-[var(--muted)]">No other buildings found registered to this owner.</p>;
+                return (
+                  <div>
+                    <p className="text-xs text-[var(--muted)] mb-2">{ownerName} also operates {portfolio.length} other building{portfolio.length === 1 ? "" : "s"}:</p>
+                    <div className="space-y-1">
+                      {portfolio.slice(0, 10).map((b) => (
+                        <div key={b.bbl} className="flex items-center justify-between">
+                          <Link href={`/property/${b.bbl}`} className="text-xs text-[var(--foreground)] hover:underline truncate">{b.address}</Link>
+                          <span className="text-[10px] text-[var(--muted-dim)] ml-2 shrink-0 font-[family-name:var(--font-geist-mono)]">{b.bbl}</span>
+                        </div>
+                      ))}
+                      {portfolio.length > 10 && <p className="text-[10px] text-[var(--muted-dim)]">...and {portfolio.length - 10} more</p>}
+                    </div>
+                  </div>
+                );
+              })()}
+            </CollapsibleSection>
+
             {/* Timeframe toggle */}
             <div className="flex items-center gap-1 bg-[var(--card)] rounded-lg p-1 border border-[var(--card-border)] w-fit">
               <button onClick={() => { setTimeframe("recent"); setVisibleCount(10); }} className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${timeframe === "recent" ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}>Last 2 years</button>
@@ -835,7 +905,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
             {/* Violation class breakdown */}
             {filteredViolations.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">Open Violations</h3>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">Current violations</h3>
                 <div className="grid grid-cols-5 gap-2">
                   <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-3 text-center">
                     <p className="text-xl font-bold text-[#FF4D4D]">{actionRequiredCount}</p>
@@ -858,9 +928,9 @@ function PropertyContent({ bbl }: { bbl: string }) {
               </div>
             )}
 
-            {/* ─── Collapsible: Complaints & Litigation ─── */}
+            {/* ─── Collapsible: Tenant complaints & legal action ─── */}
             <CollapsibleSection
-              title="Complaints & Litigation"
+              title="Tenant complaints & legal action"
               summary={`${filteredComplaintCount} complaint${filteredComplaintCount === 1 ? "" : "s"} · ${filteredLitigations.length} litigation`}
             >
               <div className="grid grid-cols-2 gap-2">
@@ -899,9 +969,9 @@ function PropertyContent({ bbl }: { bbl: string }) {
               </div>
             </CollapsibleSection>
 
-            {/* ─── Collapsible: Building History ─── */}
+            {/* ─── Collapsible: Building safety history ─── */}
             <CollapsibleSection
-              title="Building History"
+              title="Building safety history"
               summary={[
                 openLeadCount > 0 ? `Lead paint: ${openLeadCount} open` : null,
                 filteredWorkOrders.length > 0 ? `Emergency repairs: ${filteredWorkOrders.length}` : null,
@@ -983,83 +1053,10 @@ function PropertyContent({ bbl }: { bbl: string }) {
               )}
             </CollapsibleSection>
 
-            {/* ─── Collapsible: Ownership ─── */}
+            {/* ─── Collapsible: All inspection records ─── */}
             <CollapsibleSection
-              title="Ownership"
-              summary={contacts.owner?.corporation_name || ownerInfo || "No registration data"}
-            >
-              {/* Registration */}
-              {(contacts.owner || contacts.agent || ownerInfo) && (
-                <div className="space-y-1.5">
-                  {contacts.owner && (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Owner</span>
-                      <span className="text-sm text-[var(--foreground)]">{contacts.owner.corporation_name || [contacts.owner.first_name, contacts.owner.last_name].filter(Boolean).join(" ")}</span>
-                    </div>
-                  )}
-                  {contacts.agent && (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Agent</span>
-                      <span className="text-sm text-[var(--foreground)]">
-                        {[contacts.agent.first_name, contacts.agent.last_name].filter(Boolean).join(" ")}
-                        {contacts.agent.corporation_name && <span className="text-[var(--muted)]">, {contacts.agent.corporation_name}</span>}
-                      </span>
-                    </div>
-                  )}
-                  {contacts.headOfficer && (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Head Officer</span>
-                      <span className="text-sm text-[var(--foreground)]">{[contacts.headOfficer.first_name, contacts.headOfficer.last_name].filter(Boolean).join(" ")}</span>
-                    </div>
-                  )}
-                  {contacts.siteManager && contacts.siteManager.last_name !== contacts.agent?.last_name && (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Site Manager</span>
-                      <span className="text-sm text-[var(--foreground)]">{[contacts.siteManager.first_name, contacts.siteManager.last_name].filter(Boolean).join(" ")}</span>
-                    </div>
-                  )}
-                  {ownerInfo && !contacts.owner && (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Owner</span>
-                      <span className="text-sm text-[var(--foreground)]">{ownerInfo}</span>
-                    </div>
-                  )}
-                  {ownerInfo && contacts.owner && (
-                    <p className="text-[10px] text-[var(--muted-dim)] mt-1">Also named in HPD litigation: {ownerInfo}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Portfolio */}
-              {(() => {
-                const ownerName = contacts.owner?.corporation_name;
-                if (!ownerName) return null;
-                if (buildingType === "Co-op" || buildingType === "Condo" || buildingType === "Condo / co-op") {
-                  return <p className="text-xs text-[var(--muted)]">This is a {buildingType.toLowerCase()} building. {ownerName} is the homeowners association. Individual units are owned separately.</p>;
-                }
-                if (portfolioLoading) return <p className="text-xs text-[var(--muted-dim)]">Looking up owner portfolio...</p>;
-                if (portfolio.length === 0) return <p className="text-xs text-[var(--muted)]">No other buildings found registered to this owner.</p>;
-                return (
-                  <div>
-                    <p className="text-xs text-[var(--muted)] mb-2">{ownerName} also operates {portfolio.length} other building{portfolio.length === 1 ? "" : "s"}:</p>
-                    <div className="space-y-1">
-                      {portfolio.slice(0, 10).map((b) => (
-                        <div key={b.bbl} className="flex items-center justify-between">
-                          <Link href={`/property/${b.bbl}`} className="text-xs text-[var(--foreground)] hover:underline truncate">{b.address}</Link>
-                          <span className="text-[10px] text-[var(--muted-dim)] ml-2 shrink-0 font-[family-name:var(--font-geist-mono)]">{b.bbl}</span>
-                        </div>
-                      ))}
-                      {portfolio.length > 10 && <p className="text-[10px] text-[var(--muted-dim)]">...and {portfolio.length - 10} more</p>}
-                    </div>
-                  </div>
-                );
-              })()}
-            </CollapsibleSection>
-
-            {/* ─── Collapsible: Violation Details ─── */}
-            <CollapsibleSection
-              title="Violation Details"
-              summary={`${filteredViolations.length} open violation${filteredViolations.length === 1 ? "" : "s"}`}
+              title="All inspection records"
+              summary="View all individual records"
             >
             <div>
               <div className="flex items-center gap-1 bg-[var(--card)] rounded-lg p-1 border border-[var(--card-border)] w-fit mb-4 flex-wrap">
