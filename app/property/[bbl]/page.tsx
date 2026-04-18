@@ -385,6 +385,12 @@ function PropertyContent({ bbl }: { bbl: string }) {
   const [portfolio, setPortfolio] = useState<PortfolioBuilding[]>([]);
   const [portfolioLoading, setPortfolioLoading] = useState(false);
 
+  // ACRIS ownership history
+  interface DeedRecord { buyer: string; seller: string; date: string; amount: number }
+  const [deeds, setDeeds] = useState<DeedRecord[]>([]);
+  const [deedsLoading, setDeedsLoading] = useState(true);
+  const [showOlderDeeds, setShowOlderDeeds] = useState(false);
+
   useEffect(() => {
     if (!propertyData) return;
     const ownerName = (propertyData.registration_contacts ?? []).find((c) => c.type === "CorporateOwner")?.corporation_name;
@@ -437,6 +443,62 @@ function PropertyContent({ bbl }: { bbl: string }) {
     }
     loadPortfolio();
   }, [propertyData, bbl]);
+
+  // ACRIS deed lookup — async, doesn't block page render
+  useEffect(() => {
+    if (bbl.length !== 10) { setDeedsLoading(false); return; }
+    const borough = bbl[0];
+    const block = bbl.slice(1, 6);
+    const lot = bbl.slice(6);
+
+    async function loadDeeds() {
+      setDeedsLoading(true);
+      try {
+        // Step 1: Get document IDs for this property
+        const lotsRes = await fetch(
+          `https://data.cityofnewyork.us/resource/8h5j-fqxa.json?borough=${borough}&block=${block}&lot=${lot}&$limit=30&$order=good_through_date DESC`
+        );
+        if (!lotsRes.ok) return;
+        const lots: { document_id?: string }[] = await lotsRes.json();
+        const docIds = Array.from(new Set(lots.map((l) => l.document_id).filter((id): id is string => !!id))).slice(0, 15);
+        if (docIds.length === 0) return;
+
+        // Step 2: Find deed documents
+        const where = docIds.map((id) => `document_id='${id}'`).join(" OR ");
+        const docsRes = await fetch(
+          `https://data.cityofnewyork.us/resource/bnx9-e6tj.json?$where=${encodeURIComponent(where)}&$select=document_id,doc_type,document_amt,recorded_datetime&$order=recorded_datetime DESC&$limit=50`
+        );
+        if (!docsRes.ok) return;
+        const docs: { document_id?: string; doc_type?: string; document_amt?: string; recorded_datetime?: string }[] = await docsRes.json();
+        const deedDocs = docs.filter((d) => d.doc_type === "DEED" || d.doc_type === "DEEDO");
+        if (deedDocs.length === 0) return;
+
+        // Step 3: Get parties for each deed
+        const results: DeedRecord[] = [];
+        for (const deed of deedDocs.slice(0, 5)) {
+          const partiesRes = await fetch(
+            `https://data.cityofnewyork.us/resource/636b-3b5g.json?document_id=${deed.document_id}&$limit=20`
+          );
+          if (!partiesRes.ok) continue;
+          const parties: { party_type?: string; name?: string }[] = await partiesRes.json();
+          const sellers = parties.filter((p) => p.party_type === "1").map((p) => p.name).filter(Boolean);
+          const buyers = parties.filter((p) => p.party_type === "2").map((p) => p.name).filter(Boolean);
+          results.push({
+            buyer: buyers.join(", ") || "Unknown",
+            seller: sellers.join(", ") || "Unknown",
+            date: deed.recorded_datetime || "",
+            amount: parseFloat(deed.document_amt || "0") || 0,
+          });
+        }
+        setDeeds(results);
+      } catch {
+        // Fail silently
+      } finally {
+        setDeedsLoading(false);
+      }
+    }
+    loadDeeds();
+  }, [bbl]);
 
   function gotoBbl(newBbl: string, q: string, label: string, bin: string, coords: string, hood: string) {
     const params = new URLSearchParams({ q, address: label, bin, coords, hood });
@@ -894,6 +956,56 @@ function PropertyContent({ bbl }: { bbl: string }) {
                   </div>
                 );
               })()}
+
+              {/* Ownership History (ACRIS) */}
+              <div>
+                <h4 className="text-xs font-semibold text-[var(--muted-dim)] uppercase tracking-wide mb-2">Ownership History</h4>
+                {deedsLoading ? (
+                  <p className="text-xs text-[var(--muted-dim)]">Loading ownership history...</p>
+                ) : deeds.length === 0 ? (
+                  <p className="text-xs text-[var(--muted)]">Ownership history not available from public records.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {/* Most recent deed */}
+                    <div>
+                      <p className="text-sm text-[var(--foreground)]">
+                        <span className="font-medium">{deeds[0].buyer}</span>
+                        {" "}purchased this building from{" "}
+                        <span className="font-medium">{deeds[0].seller}</span>
+                        {" "}on {formatDate(deeds[0].date)}
+                        {deeds[0].amount >= 1000
+                          ? ` for $${Math.round(deeds[0].amount).toLocaleString()}`
+                          : " (transfer — no sale price recorded)"}
+                        .
+                      </p>
+                      {deeds[0].date && (
+                        <p className="text-[10px] text-[var(--muted-dim)] mt-0.5">
+                          Current owner for {Math.max(0, Math.floor((Date.now() - new Date(deeds[0].date).getTime()) / (365.25 * 24 * 60 * 60 * 1000)))} years
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Older deeds */}
+                    {deeds.length > 1 && (
+                      <div>
+                        <button onClick={() => setShowOlderDeeds(!showOlderDeeds)} className="text-[10px] text-[var(--muted)] hover:text-[var(--foreground)]">
+                          {showOlderDeeds ? "Hide" : "Show"} {deeds.length - 1} previous transfer{deeds.length - 1 === 1 ? "" : "s"}
+                        </button>
+                        {showOlderDeeds && (
+                          <div className="mt-2 space-y-1.5">
+                            {deeds.slice(1).map((d, i) => (
+                              <div key={i} className="text-xs text-[var(--muted)]">
+                                {formatDate(d.date)} — {d.buyer} from {d.seller}
+                                {d.amount >= 1000 ? ` · $${Math.round(d.amount).toLocaleString()}` : " · Transfer"}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </CollapsibleSection>
 
             {/* Timeframe toggle */}
