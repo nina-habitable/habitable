@@ -380,6 +380,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
       finally { setLoadingProperty(false); }
     }
     load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bbl]);
 
   // Owner portfolio — live lookup
@@ -449,6 +450,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
       }
     }
     loadPortfolio();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propertyData, bbl]);
 
   // ACRIS deed lookup — async, doesn't block page render

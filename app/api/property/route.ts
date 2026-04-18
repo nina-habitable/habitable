@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase, supabaseAdmin } from "../../../lib/supabase";
+import { supabaseAdmin } from "../../../lib/supabase";
 
 async function safeFetch(url: string, label: string): Promise<Record<string, string>[]> {
   try {
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
     // Fetch violations in batches to bypass Supabase 1000-row default limit
-    let cached: Record<string, unknown>[] = [];
+    const cached: Record<string, unknown>[] = [];
     {
       let offset = 0;
       const batchSize = 1000;
