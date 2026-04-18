@@ -17,6 +17,7 @@ export const metadata: Metadata = {
   title: { default: "Habitable", template: "%s" },
   description: "Look up any NYC building before you sign a lease. Violations, complaints, ownership, and safety data in plain English.",
   metadataBase: new URL("https://habitable-xi.vercel.app"),
+  verification: { google: "Ttpl8IvLe7s1ZJIxfERCbG2COeaohMtQ0nTP7EjOFP4" },
 };
 
 export default function RootLayout({
