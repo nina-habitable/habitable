@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: { bbl: string } }):
 
     const [propResult, violResult, complaintResult] = await Promise.all([
       supabase.from("properties").select("address,nta").eq("bbl", bbl).single(),
-      supabase.from("violations").select("id", { count: "exact", head: true }).eq("bbl", bbl),
+      supabase.from("violations").select("id", { count: "exact", head: true }).eq("bbl", bbl).not("status", "in", '("VIOLATION CLOSED","VIOLATION DISMISSED","NOV CERTIFIED LATE","NOV CERTIFIED ON TIME","INFO NOV SENT OUT","LEAD DOCS SUBMITTED, ACCEPTABLE","CERTIFICATION POSTPONEMENT GRANTED")'),
       supabase.from("complaints").select("complaint_id").eq("bbl", bbl),
     ]);
 
