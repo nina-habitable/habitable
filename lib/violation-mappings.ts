@@ -508,6 +508,56 @@ export const VIOLATION_MAPPINGS: ViolationMapping[] = [
     severity: "low",
   },
 
+  // Nuisance — specific (gas/motor) before general
+  {
+    id: "nuisance-gas-motor",
+    keywords: ["NUISANCE", "GAS"],
+    title: "Gas/motor-powered equipment nuisance",
+    explanation: "A gas or motor-powered device is creating a nuisance and must be removed or abated.",
+    icon: "🔧",
+    severity: "medium",
+  },
+  {
+    id: "nuisance-motor",
+    keywords: ["NUISANCE", "MOTOR"],
+    title: "Gas/motor-powered equipment nuisance",
+    explanation: "A gas or motor-powered device is creating a nuisance and must be removed or abated.",
+    icon: "🔧",
+    severity: "medium",
+  },
+  {
+    id: "nuisance-powered",
+    keywords: ["NUISANCE", "POWERED"],
+    title: "Gas/motor-powered equipment nuisance",
+    explanation: "A gas or motor-powered device is creating a nuisance and must be removed or abated.",
+    icon: "🔧",
+    severity: "medium",
+  },
+  {
+    id: "nuisance-general",
+    keywords: ["NUISANCE"],
+    title: "Nuisance condition",
+    explanation: "A nuisance condition was found and the landlord has been ordered to abate it.",
+    icon: "🔧",
+    severity: "medium",
+  },
+  {
+    id: "handrail",
+    keywords: ["HANDRAIL"],
+    title: "Handrail issue",
+    explanation: "A handrail in the building is broken, loose, or missing.",
+    icon: "🪜",
+    severity: "medium",
+  },
+  {
+    id: "hand-rail",
+    keywords: ["HAND RAIL"],
+    title: "Handrail issue",
+    explanation: "A handrail in the building is broken, loose, or missing.",
+    icon: "🪜",
+    severity: "medium",
+  },
+
   // Generic catch-all — must be LAST among POST/NOTICE patterns
   {
     id: "posted-notice",
