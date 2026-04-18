@@ -28,18 +28,19 @@ export async function GET(request: NextRequest) {
     // Check for fresh cache (less than 24 hours old)
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    const { data: cached } = await supabase
+    const { data: cached } = await supabaseAdmin
       .from("violations")
       .select("*")
       .eq("bbl", bbl)
-      .gte("created_at", twentyFourHoursAgo);
+      .gte("created_at", twentyFourHoursAgo)
+      .limit(10000);
 
     if (cached && cached.length > 0) {
       // Use supabaseAdmin for all cached reads to bypass RLS
       const [cachedVacate, cachedComplaints, cachedLitigations, cachedBedbugs, cachedProperty, cachedBuildingDetails, cachedContacts, cachedAep, cached311, cachedLead, cachedWorkOrders] = await Promise.all([
         supabaseAdmin.from("vacate_orders").select("*").eq("bbl", bbl),
-        supabaseAdmin.from("complaints").select("*").eq("bbl", bbl),
-        supabaseAdmin.from("litigations").select("*").eq("bbl", bbl),
+        supabaseAdmin.from("complaints").select("*").eq("bbl", bbl).limit(5000),
+        supabaseAdmin.from("litigations").select("*").eq("bbl", bbl).limit(1000),
         supabaseAdmin.from("bedbug_reports").select("*").eq("bbl", bbl),
         supabaseAdmin.from("properties").select("address,nta").eq("bbl", bbl).single(),
         supabaseAdmin.from("building_details").select("*").eq("bbl", bbl).maybeSingle(),
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
         supabaseAdmin.from("work_orders").select("*").eq("bbl", bbl),
       ]);
 
-      console.log(`[/api/property] Cache hit for ${bbl}: building_details=${!!cachedBuildingDetails.data}, contacts=${(cachedContacts.data ?? []).length}, bd_error=${cachedBuildingDetails.error?.message ?? "none"}, contacts_error=${cachedContacts.error?.message ?? "none"}`);
+      console.log(`[/api/property] Cache hit for ${bbl}: violations=${cached.length}, complaints=${(cachedComplaints.data ?? []).length}, building_details=${!!cachedBuildingDetails.data}`);
 
       const cachedComplaintsList = cachedComplaints.data ?? [];
       const cachedUniqueComplaints = new Set(cachedComplaintsList.map((c: Record<string, string>) => c.complaint_id));
