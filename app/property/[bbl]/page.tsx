@@ -391,6 +391,11 @@ function PropertyContent({ bbl }: { bbl: string }) {
   const [deedsLoading, setDeedsLoading] = useState(true);
   const [showOlderDeeds, setShowOlderDeeds] = useState(false);
 
+  // ACRIS LLC linking
+  interface LinkedProperty { bbl: string; address: string; date: string }
+  const [linkedProperties, setLinkedProperties] = useState<LinkedProperty[]>([]);
+  const [linkedName, setLinkedName] = useState("");
+
   useEffect(() => {
     if (!propertyData) return;
     const ownerName = (propertyData.registration_contacts ?? []).find((c) => c.type === "CorporateOwner")?.corporation_name;
@@ -501,6 +506,67 @@ function PropertyContent({ bbl }: { bbl: string }) {
     }
     loadDeeds();
   }, [bbl]);
+
+  // ACRIS LLC linking — find other properties by head officer name
+  useEffect(() => {
+    if (!propertyData) return;
+    const contacts = propertyData.registration_contacts ?? [];
+    const person = contacts.find((c) => c.type === "HeadOfficer") || contacts.find((c) => c.type === "IndividualOwner");
+    if (!person?.first_name || !person?.last_name) return;
+    const fullName = `${person.last_name}, ${person.first_name}`.toUpperCase();
+    setLinkedName(`${person.first_name} ${person.last_name}`);
+
+    async function loadLinked() {
+      try {
+        // Find all purchases by this person
+        const partiesRes = await fetch(
+          `https://data.cityofnewyork.us/resource/636b-3b5g.json?name=${encodeURIComponent(fullName)}&party_type=2&$limit=50&$select=document_id`
+        );
+        if (!partiesRes.ok) return;
+        const parties: { document_id?: string }[] = await partiesRes.json();
+        const docIds = Array.from(new Set(parties.map((p) => p.document_id).filter((id): id is string => !!id)));
+        if (docIds.length === 0) return;
+
+        // Batch lookup property addresses
+        const where = docIds.slice(0, 30).map((id) => `document_id='${id}'`).join(" OR ");
+        const legalsRes = await fetch(
+          `https://data.cityofnewyork.us/resource/8h5j-fqxa.json?$where=${encodeURIComponent(where)}&$limit=200`
+        );
+        if (!legalsRes.ok) return;
+        const legals: { document_id?: string; borough?: string; block?: string; lot?: string; street_number?: string; street_name?: string }[] = await legalsRes.json();
+
+        // Also get deed dates
+        const masterRes = await fetch(
+          `https://data.cityofnewyork.us/resource/bnx9-e6tj.json?$where=${encodeURIComponent(where)}&$select=document_id,recorded_datetime&$limit=200`
+        );
+        const masterDocs: { document_id?: string; recorded_datetime?: string }[] = masterRes.ok ? await masterRes.json() : [];
+        const dateMap = new Map(masterDocs.map((d) => [d.document_id, d.recorded_datetime || ""]));
+
+        const boroNames = ["", "Manhattan", "Bronx", "Brooklyn", "Queens", "Staten Island"];
+        const seen = new Set<string>();
+        const results: LinkedProperty[] = [];
+
+        for (const l of legals) {
+          if (!l.borough || !l.block || !l.lot) continue;
+          const linkedBbl = `${l.borough}${String(l.block).padStart(5, "0")}${String(l.lot).padStart(4, "0")}`;
+          if (linkedBbl === bbl || seen.has(linkedBbl)) continue;
+          seen.add(linkedBbl);
+          const addr = [l.street_number, l.street_name].filter(Boolean).join(" ");
+          const boro = boroNames[parseInt(l.borough) || 0] || "";
+          results.push({
+            bbl: linkedBbl,
+            address: addr ? `${addr}, ${boro}` : `Property ${linkedBbl}`,
+            date: dateMap.get(l.document_id || "") || "",
+          });
+        }
+
+        setLinkedProperties(results.slice(0, 20));
+      } catch {
+        // Fail silently
+      }
+    }
+    loadLinked();
+  }, [propertyData, bbl]);
 
   function gotoBbl(newBbl: string, q: string, label: string, bin: string, coords: string, hood: string) {
     const params = new URLSearchParams({ q, address: label, bin, coords, hood });
@@ -958,6 +1024,26 @@ function PropertyContent({ bbl }: { bbl: string }) {
                   </div>
                 );
               })()}
+
+              {/* ACRIS LLC Linking */}
+              {linkedProperties.length > 0 && linkedName && (
+                <div>
+                  <h4 className="text-xs font-semibold text-[var(--muted-dim)] uppercase tracking-wide mb-2">Other properties linked to {linkedName}</h4>
+                  <p className="text-xs text-[var(--muted)] mb-2">{linkedName} is also linked to {linkedProperties.length} other property transaction{linkedProperties.length === 1 ? "" : "s"}:</p>
+                  <div className="space-y-1">
+                    {linkedProperties.map((lp) => (
+                      <div key={lp.bbl} className="flex items-center justify-between">
+                        <Link href={`/property/${lp.bbl}`} className="text-xs text-[var(--foreground)] hover:underline truncate">
+                          {lp.address}
+                          {lp.date && <span className="text-[var(--muted-dim)]"> · {formatDate(lp.date)}</span>}
+                        </Link>
+                        <span className="text-[10px] text-[var(--muted-dim)] ml-2 shrink-0 font-[family-name:var(--font-geist-mono)]">{lp.bbl}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-[var(--muted-dim)] mt-2">Properties linked by owner name — some may belong to a different person with the same name.</p>
+                </div>
+              )}
 
               {/* Ownership History (ACRIS) */}
               <div>
