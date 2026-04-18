@@ -1284,7 +1284,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
               <div className="flex items-center gap-1 bg-[var(--card)] rounded-lg p-1 border border-[var(--card-border)] w-fit mb-4 flex-wrap">
                 {(["violations", "complaints", "litigation", "311"] as const).map((tab) => (
                   <button key={tab} onClick={() => setActiveTab(tab)} className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${activeTab === tab ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}>
-                    {tab === "violations" ? `Violations (${filteredViolations.length})` : tab === "complaints" ? `Complaints (${filteredComplaints.length})` : tab === "litigation" ? `Litigation (${filteredLitigations.length})` : `311 Reports (${filtered311.length})`}
+                    {tab === "violations" ? `Violations (${filteredViolations.length})` : tab === "complaints" ? `Complaints (${filteredComplaintCount})` : tab === "litigation" ? `Litigation (${filteredLitigations.length})` : `311 Reports (${filtered311.length})`}
                   </button>
                 ))}
               </div>
