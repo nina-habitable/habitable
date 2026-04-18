@@ -319,7 +319,7 @@ function PaginatedList<T>({
   );
 }
 
-// ─── Collapsible Section ────────────────────────────
+// ─── Collapsible Section ───────────────────────────
 
 function CollapsibleSection({ title, summary, children, defaultOpen = false }: {
   title: string;
