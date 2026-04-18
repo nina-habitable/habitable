@@ -513,18 +513,23 @@ function PropertyContent({ bbl }: { bbl: string }) {
     const contacts = propertyData.registration_contacts ?? [];
     const person = contacts.find((c) => c.type === "HeadOfficer") || contacts.find((c) => c.type === "IndividualOwner");
     if (!person?.first_name || !person?.last_name) return;
-    const fullName = `${person.last_name}, ${person.first_name}`.toUpperCase();
+    const first = person.first_name.toUpperCase();
+    const last = person.last_name.toUpperCase();
+    const nameA = `${last}, ${first}`;
+    const nameB = `${first} ${last}`;
     setLinkedName(`${person.first_name} ${person.last_name}`);
 
     async function loadLinked() {
       try {
-        // Find all purchases by this person
-        const partiesRes = await fetch(
-          `https://data.cityofnewyork.us/resource/636b-3b5g.json?name=${encodeURIComponent(fullName)}&party_type=2&$limit=50&$select=document_id`
-        );
-        if (!partiesRes.ok) return;
-        const parties: { document_id?: string }[] = await partiesRes.json();
-        const docIds = Array.from(new Set(parties.map((p) => p.document_id).filter((id): id is string => !!id)));
+        // Find all purchases by this person — query both name formats
+        const [resA, resB] = await Promise.all([
+          fetch(`https://data.cityofnewyork.us/resource/636b-3b5g.json?name=${encodeURIComponent(nameA)}&party_type=2&$limit=50&$select=document_id`),
+          fetch(`https://data.cityofnewyork.us/resource/636b-3b5g.json?name=${encodeURIComponent(nameB)}&party_type=2&$limit=50&$select=document_id`),
+        ]);
+        const partiesA: { document_id?: string }[] = resA.ok ? await resA.json() : [];
+        const partiesB: { document_id?: string }[] = resB.ok ? await resB.json() : [];
+        const allParties = [...partiesA, ...partiesB];
+        const docIds = Array.from(new Set(allParties.map((p) => p.document_id).filter((id): id is string => !!id)));
         if (docIds.length === 0) return;
 
         // Batch lookup property addresses
@@ -555,7 +560,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
           const boro = boroNames[parseInt(l.borough) || 0] || "";
           results.push({
             bbl: linkedBbl,
-            address: addr ? `${addr}, ${boro}` : `Property ${linkedBbl}`,
+            address: addr ? `${addr}, ${boro}` : `${boro} (BBL: ${linkedBbl})`,
             date: dateMap.get(l.document_id || "") || "",
           });
         }
@@ -1008,7 +1013,7 @@ function PropertyContent({ bbl }: { bbl: string }) {
                   return <p className="text-xs text-[var(--muted)]">This is a {buildingType.toLowerCase()} building. {ownerName} is the homeowners association. Individual units are owned separately.</p>;
                 }
                 if (portfolioLoading) return <p className="text-xs text-[var(--muted-dim)]">Looking up owner portfolio...</p>;
-                if (portfolio.length === 0) return <p className="text-xs text-[var(--muted)]">No other buildings found registered to this owner.</p>;
+                if (portfolio.length === 0) return <p className="text-xs text-[var(--muted)]">No other buildings registered under {ownerName}.</p>;
                 return (
                   <div>
                     <p className="text-xs text-[var(--muted)] mb-2">{ownerName} also operates {portfolio.length} other building{portfolio.length === 1 ? "" : "s"}:</p>
