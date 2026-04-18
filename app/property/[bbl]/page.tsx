@@ -466,11 +466,13 @@ function PropertyContent({ bbl }: { bbl: string }) {
         // Step 2: Find deed documents
         const where = docIds.map((id) => `document_id='${id}'`).join(" OR ");
         const docsRes = await fetch(
-          `https://data.cityofnewyork.us/resource/bnx9-e6tj.json?$where=${encodeURIComponent(where)}&$select=document_id,doc_type,document_amt,recorded_datetime&$order=recorded_datetime DESC&$limit=50`
+          `https://data.cityofnewyork.us/resource/bnx9-e6tj.json?$where=${encodeURIComponent(where)}&$select=document_id,doc_type,document_amt,recorded_datetime&$limit=200`
         );
         if (!docsRes.ok) return;
         const docs: { document_id?: string; doc_type?: string; document_amt?: string; recorded_datetime?: string }[] = await docsRes.json();
-        const deedDocs = docs.filter((d) => d.doc_type === "DEED" || d.doc_type === "DEEDO");
+        const deedDocs = docs
+          .filter((d) => d.doc_type === "DEED" || d.doc_type === "DEEDO")
+          .sort((a, b) => (b.recorded_datetime || "").localeCompare(a.recorded_datetime || ""));
         if (deedDocs.length === 0) return;
 
         // Step 3: Get parties for each deed
