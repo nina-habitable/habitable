@@ -46,6 +46,8 @@ function isRecent(dateStr: string | null): boolean {
 }
 
 // Statuses that are NOT open violations (closed, resolved, or dismissed)
+// NOTE: "NOV SENT OUT" is an OPEN status (notice mailed to owner — active enforcement)
+// Only "INFO NOV SENT OUT" is excluded (informational, not enforcement)
 const CLOSED_STATUSES = new Set([
   "VIOLATION CLOSED", "VIOLATION DISMISSED", "NOV CERTIFIED LATE",
   "NOV CERTIFIED ON TIME", "INFO NOV SENT OUT", "LEAD DOCS SUBMITTED, ACCEPTABLE",

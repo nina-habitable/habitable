@@ -23,6 +23,7 @@ function isRecent(dateStr: string | null): boolean {
   return dateStr >= twoYearsAgoISO;
 }
 
+// NOTE: "NOV SENT OUT" is OPEN (active enforcement). Only "INFO NOV SENT OUT" is excluded.
 const CLOSED_STATUSES = new Set([
   "VIOLATION CLOSED", "VIOLATION DISMISSED", "NOV CERTIFIED LATE",
   "NOV CERTIFIED ON TIME", "INFO NOV SENT OUT", "LEAD DOCS SUBMITTED, ACCEPTABLE",

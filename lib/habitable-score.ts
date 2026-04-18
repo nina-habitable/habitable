@@ -9,6 +9,7 @@ import type { PropertyResponse } from "./property-types";
 export const SHOW_HABITABLE_SCORE = true;
 
 // Same closed statuses as the property page
+// NOTE: "NOV SENT OUT" is OPEN (active enforcement). Only "INFO NOV SENT OUT" is excluded.
 const CLOSED_STATUSES = new Set([
   "VIOLATION CLOSED", "VIOLATION DISMISSED", "NOV CERTIFIED LATE",
   "NOV CERTIFIED ON TIME", "INFO NOV SENT OUT", "LEAD DOCS SUBMITTED, ACCEPTABLE",
