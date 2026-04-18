@@ -28,18 +28,30 @@ export async function GET(request: NextRequest) {
     // Check for fresh cache (less than 24 hours old)
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    const { data: cached } = await supabaseAdmin
-      .from("violations")
-      .select("*")
-      .eq("bbl", bbl)
-      .gte("created_at", twentyFourHoursAgo)
-      .limit(10000);
+    // Fetch violations in batches to bypass Supabase 1000-row default limit
+    let cached: Record<string, unknown>[] = [];
+    {
+      let offset = 0;
+      const batchSize = 1000;
+      while (true) {
+        const { data: batch } = await supabaseAdmin
+          .from("violations")
+          .select("*")
+          .eq("bbl", bbl)
+          .gte("created_at", twentyFourHoursAgo)
+          .range(offset, offset + batchSize - 1);
+        if (!batch || batch.length === 0) break;
+        cached.push(...batch);
+        if (batch.length < batchSize) break;
+        offset += batchSize;
+      }
+    }
 
     if (cached && cached.length > 0) {
       // Use supabaseAdmin for all cached reads to bypass RLS
       const [cachedVacate, cachedComplaints, cachedLitigations, cachedBedbugs, cachedProperty, cachedBuildingDetails, cachedContacts, cachedAep, cached311, cachedLead, cachedWorkOrders] = await Promise.all([
         supabaseAdmin.from("vacate_orders").select("*").eq("bbl", bbl),
-        supabaseAdmin.from("complaints").select("*").eq("bbl", bbl).limit(5000),
+        supabaseAdmin.from("complaints").select("*").eq("bbl", bbl).range(0, 4999),
         supabaseAdmin.from("litigations").select("*").eq("bbl", bbl).limit(1000),
         supabaseAdmin.from("bedbug_reports").select("*").eq("bbl", bbl),
         supabaseAdmin.from("properties").select("address,nta").eq("bbl", bbl).single(),
