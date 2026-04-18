@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
   const geoHood = request.nextUrl.searchParams.get("hood");
 
 
+  // Validate BBL parameter
   if (!bbl) {
     return NextResponse.json({ error: "BBL parameter is required" }, { status: 400 });
   }
