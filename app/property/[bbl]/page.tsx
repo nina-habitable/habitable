@@ -14,16 +14,22 @@ export async function generateMetadata({ params }: { params: { bbl: string } }):
     if (!supabaseKey) throw new Error("No key");
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    const CLOSED = new Set([
+      "VIOLATION CLOSED", "VIOLATION DISMISSED", "NOV CERTIFIED LATE",
+      "NOV CERTIFIED ON TIME", "INFO NOV SENT OUT", "LEAD DOCS SUBMITTED, ACCEPTABLE",
+      "CERTIFICATION POSTPONEMENT GRANTED",
+    ]);
+
     const [propResult, violResult, complaintResult] = await Promise.all([
       supabase.from("properties").select("address,nta").eq("bbl", bbl).single(),
-      supabase.from("violations").select("id", { count: "exact", head: true }).eq("bbl", bbl).not("status", "in", '("VIOLATION CLOSED","VIOLATION DISMISSED","NOV CERTIFIED LATE","NOV CERTIFIED ON TIME","INFO NOV SENT OUT","LEAD DOCS SUBMITTED, ACCEPTABLE","CERTIFICATION POSTPONEMENT GRANTED")'),
-      supabase.from("complaints").select("complaint_id").eq("bbl", bbl),
+      supabase.from("violations").select("status").eq("bbl", bbl).range(0, 9999),
+      supabase.from("complaints").select("complaint_id").eq("bbl", bbl).range(0, 4999),
     ]);
 
     const address = propResult.data?.address;
     if (!address) throw new Error("Not cached");
 
-    const violationCount = violResult.count ?? 0;
+    const violationCount = (violResult.data ?? []).filter((v: { status: string }) => !CLOSED.has(v.status)).length;
     const complaintCount = new Set((complaintResult.data ?? []).map((c: { complaint_id: string }) => c.complaint_id)).size;
 
     const title = `${address} — Building Report | Habitable`;
