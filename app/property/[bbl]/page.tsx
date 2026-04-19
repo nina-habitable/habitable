@@ -20,16 +20,26 @@ export async function generateMetadata({ params }: { params: { bbl: string } }):
       "CERTIFICATION POSTPONEMENT GRANTED",
     ]);
 
-    const [propResult, violResult, complaintResult] = await Promise.all([
+    const [propResult, complaintResult] = await Promise.all([
       supabase.from("properties").select("address,nta").eq("bbl", bbl).single(),
-      supabase.from("violations").select("status").eq("bbl", bbl).range(0, 9999),
       supabase.from("complaints").select("complaint_id").eq("bbl", bbl).range(0, 4999),
     ]);
 
     const address = propResult.data?.address;
     if (!address) throw new Error("Not cached");
 
-    const violationCount = (violResult.data ?? []).filter((v: { status: string }) => !CLOSED.has(v.status)).length;
+    // Paginate violations to bypass Supabase 1000-row limit
+    const allStatuses: string[] = [];
+    let offset = 0;
+    while (true) {
+      const { data: batch } = await supabase.from("violations").select("status").eq("bbl", bbl).range(offset, offset + 999);
+      if (!batch || batch.length === 0) break;
+      allStatuses.push(...batch.map((v: { status: string }) => v.status));
+      if (batch.length < 1000) break;
+      offset += 1000;
+    }
+
+    const violationCount = allStatuses.filter((s) => !CLOSED.has(s)).length;
     const complaintCount = new Set((complaintResult.data ?? []).map((c: { complaint_id: string }) => c.complaint_id)).size;
 
     const title = `${address} — Building Report | Habitable`;
