@@ -1,0 +1,215 @@
+{
+  "violations": {
+    "_count": 1565,
+    "_first": {
+      "id": "8541303",
+      "bbl": "3014760006",
+      "class": "B",
+      "status": "VIOLATION CLOSED",
+      "novdescription": "§ 27-2005 ADM CODE PROPERLY REPAIR WITH SIMILAR MATERIAL THE BROKEN OR DEFECTIVE FIRE RETARDED PLASTER, BULKHEAD SOUTH WALL AND CEILING AT PUBLIC HALL, 4th STORY",
+      "novissuedate": null,
+      "ordernumber": null,
+      "inspectiondate": "2010-08-03",
+      "approveddate": null,
+      "currentstatusdate": "2015-02-06",
+      "raw": {
+        "bbl": "3014760006",
+        "bin": "3039579",
+        "lot": "6",
+        "nta": "Ocean Hill",
+        "zip": "11233",
+        "boro": "BROOKLYN",
+        "block": "1476",
+        "class": "B",
+        "novid": "3988773",
+        "story": "4",
+        "boroid": "3",
+        "novtype": "Original",
+        "latitude": "40.668777",
+        "longitude": "-73.920064",
+        "buildingid": "314175",
+        "streetcode": "50930",
+        "streetname": "HOWARD AVENUE",
+        "censustract": "361",
+        "housenumber": "553",
+        "ordernumber": "502",
+        "violationid": "8541303",
+        "approveddate": "2010-08-04T00:00:00.000",
+        "currentstatus": "VIOLATION CLOSED",
+        "novissueddate": "2010-08-05T00:00:00.000",
+        "rentimpairing": "N",
+        "communityboard": "16",
+        "inspectiondate": "2010-08-03T00:00:00.000",
+        "lowhousenumber": "553",
+        "novdescription": "§ 27-2005 ADM CODE PROPERLY REPAIR WITH SIMILAR MATERIAL THE BROKEN OR DEFECTIVE FIRE RETARDED PLASTER, BULKHEAD SOUTH WALL AND CEILING AT PUBLIC HALL, 4th STORY",
+        "registrationid": "341178",
+        "councildistrict": "41",
+        "currentstatusid": "19",
+        "highhousenumber": "553",
+        "violationstatus": "Close",
+        "currentstatusdate": "2015-02-06T00:00:00.000",
+        "originalcertifybydate": "2010-09-23T00:00:00.000",
+        "originalcorrectbydate": "2010-09-09T00:00:00.000"
+      },
+      "created_at": "2026-04-18T23:24:34.125032+00:00"
+    },
+    "_note": "Array truncated to first element"
+  },
+  "vacate_orders": {
+    "_count": 1,
+    "_first": {
+      "id": "153670",
+      "bbl": "3014760006",
+      "vacate_type": "Partial",
+      "reason": "Illegal Occupancy",
+      "effective_date": "2020-03-04",
+      "units_vacated": "1",
+      "created_at": "2026-04-18T23:24:32.312676+00:00",
+      "rescind_date": null
+    },
+    "_note": "Array truncated to first element"
+  },
+  "complaints": {
+    "_count": 209,
+    "_first": {
+      "id": "26248160",
+      "bbl": "3014760006",
+      "complaint_id": "13296934",
+      "complaint_status": "CLOSE",
+      "major_category": "HEAT/HOT WATER",
+      "type": "EMERGENCY",
+      "received_date": "2024-11-22T16:36:46+00:00",
+      "created_at": "2026-04-18T23:24:32.409626+00:00",
+      "minor_category": "ENTIRE BUILDING",
+      "problem_code": null
+    },
+    "_note": "Array truncated to first element"
+  },
+  "complaint_count": 89,
+  "litigations": {
+    "_count": 26,
+    "_first": {
+      "id": "490988",
+      "bbl": "3014760006",
+      "building_id": "314175",
+      "casetype": "Tenant Action",
+      "casestatus": "CLOSED",
+      "caseopendate": "2025-08-20",
+      "respondent": "553 HOWARD LLC",
+      "created_at": "2026-04-18T23:24:32.310663+00:00"
+    },
+    "_note": "Array truncated to first element"
+  },
+  "bedbug_reports": {
+    "_count": 8,
+    "_first": {
+      "id": "314175-2021-12-30T00:00:00.000",
+      "bbl": "3014760006",
+      "building_id": "314175",
+      "filing_date": "2021-12-30T00:00:00+00:00",
+      "infested_unit_count": 0,
+      "eradicated_unit_count": 0,
+      "created_at": "2026-04-18T23:24:32.306123+00:00"
+    },
+    "_note": "Array truncated to first element"
+  },
+  "building_details": {
+    "id": "314175",
+    "bbl": "3014760006",
+    "building_id": "314175",
+    "legal_stories": 4,
+    "legal_class_a": 12,
+    "legal_class_b": null,
+    "dob_building_class": "NEW LAW TENEMENT",
+    "management_program": "PVT",
+    "lifecycle": null,
+    "registration_id": "341178",
+    "created_at": "2026-04-18T23:24:32.305912+00:00"
+  },
+  "registration_contacts": {
+    "_count": 5,
+    "_first": {
+      "id": "34117803",
+      "bbl": "3014760006",
+      "registration_id": "341178",
+      "type": "CorporateOwner",
+      "contact_description": "GEN.PART",
+      "corporation_name": "553 HOWARD LLC",
+      "first_name": null,
+      "last_name": null,
+      "business_address": "188 Pulaski Brooklyn NY 11206",
+      "created_at": "2026-04-18T23:24:32.159721+00:00"
+    },
+    "_note": "Array truncated to first element"
+  },
+  "aep_status": {
+    "_count": 3,
+    "_first": {
+      "id": "314175-2023-01-31T00:00:00.000",
+      "bbl": "3014760006",
+      "building_id": "314175",
+      "aep_start_date": "2023-01-31T00:00:00+00:00",
+      "discharge_date": null,
+      "current_status": "AEP Active",
+      "aep_round": "Aep Round 16",
+      "violations_at_start": 1697,
+      "created_at": "2026-04-18T23:24:32.437452+00:00"
+    },
+    "_note": "Array truncated to first element"
+  },
+  "service_requests_311": {
+    "_count": 20,
+    "_first": {
+      "id": "59682476",
+      "bbl": "3014760006",
+      "unique_key": "59682476",
+      "agency": "DOHMH",
+      "agency_name": "Department of Health and Mental Hygiene",
+      "complaint_type": "Indoor Air Quality",
+      "descriptor": "Chemical Vapors/Gases/Odors",
+      "status": "Closed",
+      "created_date": "2023-12-08T18:35:04+00:00",
+      "closed_date": "2023-12-11T09:19:32+00:00",
+      "resolution_description": "The owner or manager of the property was sent an advisory to correct the condition. If the condition persists, please call 311 or go online to www.nyc.gov/311 and submit another complaint.",
+      "created_at": "2026-04-18T23:24:34.033279+00:00"
+    },
+    "_note": "Array truncated to first element"
+  },
+  "lead_violations": {
+    "_count": 3,
+    "_first": {
+      "id": "13472348",
+      "bbl": "3014760006",
+      "violation_id": "13472348",
+      "class": "C",
+      "status": "DEFECT LETTER ISSUED",
+      "novdescription": "§ 27-2056.6 ADM CODE - CORRECT THE LEAD-BASED PAINT HAZARD - PRESUMED LEAD PAINT THAT IS PEELING OR ON A DETERIORATED SUBSURFACE USING WORK PRACTICES SET FORTH IN 28 RCNY §11-06(B)(2) 1st DOOR FRAME FROM SOUTH AT WEST WALL IN THE BATHROOM LOCATED AT APT 9, 3rd STORY, 1st APARTMENT FROM SOUTH AT WEST",
+      "inspectiondate": "2019-11-23T00:00:00+00:00",
+      "currentstatusdate": "2023-05-31T00:00:00+00:00",
+      "apartment": "9",
+      "created_at": "2026-04-18T23:24:34.566189+00:00"
+    },
+    "_note": "Array truncated to first element"
+  },
+  "work_orders": {
+    "_count": 40,
+    "_first": {
+      "id": "4910291",
+      "bbl": "3014760006",
+      "omo_id": "4910291",
+      "omo_number": "EK17701",
+      "building_id": "314175",
+      "work_type": "PLUMB",
+      "status_reason": "Owner Refused Access",
+      "award_amount": 4950,
+      "created_date": "2020-01-17T00:00:00+00:00",
+      "description": "heat**********heat*********heat**********heat*********heat at steam heat distribution - trace locate adjust repair and restore adequate heat distribu",
+      "created_at": "2026-04-18T23:24:34.812411+00:00"
+    },
+    "_note": "Array truncated to first element"
+  },
+  "address_label": "553 HOWARD AVENUE, Brooklyn, NY",
+  "nta": "Brownsville",
+  "cached_at": "2026-04-18T23:24:34.125032+00:00",
+  "from_cache": true
+}
