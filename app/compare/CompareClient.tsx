@@ -210,9 +210,12 @@ function BuildingCard({
           const score = calculateHabitableScore(propertyData, "recent");
           if (score.type === "score") {
             return (
-              <p className={`text-sm font-bold ${score.accentColor === "green" ? "text-green-400" : score.accentColor === "amber" ? "text-[#FFB020]" : "text-[#FF4D4D]"}`}>
-                Better than {score.percentile}%
-              </p>
+              <div>
+                <p className={`text-sm font-bold ${score.accentColor === "green" ? "text-green-400" : score.accentColor === "amber" ? "text-[#FFB020]" : "text-[#FF4D4D]"}`}>
+                  Better than {score.percentile}%
+                </p>
+                <p className="text-[10px] text-[var(--muted-dim)]">Habitable Score</p>
+              </div>
             );
           }
           if (score.type === "clean") {
@@ -441,6 +444,12 @@ function CompareContent() {
             <p className="text-xs text-[var(--muted-dim)]">
               {3 - buildings.length} more building{buildings.length === 2 ? "" : "s"} can be added.
             </p>
+          </div>
+        )}
+        {SHOW_HABITABLE_SCORE && buildings.length > 0 && (
+          <div className="text-center mt-6 space-y-1">
+            <Link href="/methodology" className="text-[10px] text-[var(--muted)] hover:text-[var(--foreground)]">How this works &rarr;</Link>
+            <p className="text-[10px] text-[var(--muted-dim)]">Based on NYC public records. Informational only: verify details before making decisions.</p>
           </div>
         )}
       </main>

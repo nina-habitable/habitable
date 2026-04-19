@@ -873,11 +873,16 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
             {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "score" && (
               <div className={`rounded-xl border p-4 ${habitableScore.accentColor === "green" ? "border-green-900 bg-green-950" : habitableScore.accentColor === "amber" ? "border-[#3D2E0A] bg-[#2E2810]" : "border-[#3D1414] bg-[#2E1010]"}`}>
                 <p className={`text-lg font-bold ${habitableScore.accentColor === "green" ? "text-green-400" : habitableScore.accentColor === "amber" ? "text-[#FFB020]" : "text-[#FF4D4D]"}`}>
-                  Better than {habitableScore.percentile}% of similar-sized buildings across NYC
+                  Better than {habitableScore.percentile}% of NYC buildings with {habitableScore.bucketLabel} units
                 </p>
+                <p className="text-[10px] text-[var(--muted-dim)] mt-0.5">Habitable Score</p>
                 <p className="text-xs text-[var(--muted-dim)] mt-1">
-                  {habitableScore.violationCount} open violation{habitableScore.violationCount === 1 ? "" : "s"} ({habitableScore.violPerUnit} per unit) · {habitableScore.complaintCount} complaint{habitableScore.complaintCount === 1 ? "" : "s"} · Compared against {habitableScore.peerCount.toLocaleString()} buildings with {habitableScore.bucketLabel} units
+                  {habitableScore.violationCount} open violation{habitableScore.violationCount === 1 ? "" : "s"} ({habitableScore.violPerUnit} per unit) · {habitableScore.complaintCount} complaint{habitableScore.complaintCount === 1 ? "" : "s"} · Compared against {habitableScore.peerCount.toLocaleString()} buildings
                 </p>
+                <div className="flex items-center gap-3 mt-2">
+                  <Link href="/methodology" className="text-[10px] text-[var(--muted)] hover:text-[var(--foreground)]">How this works &rarr;</Link>
+                </div>
+                <p className="text-[10px] text-[var(--muted-dim)] mt-1">Based on NYC public records. Informational only: verify details before making decisions.</p>
               </div>
             )}
             {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "no_score" && habitableScore.reason === "missing_data" && (

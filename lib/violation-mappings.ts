@@ -52,7 +52,7 @@ export const VIOLATION_MAPPINGS: ViolationMapping[] = [
     id: "fire-escape-blocked",
     keywords: ["FIRE ESCAPE", "OBSTR"],
     title: "Fire escape obstruction",
-    explanation: "The fire escape is blocked or obstructed. This is a life-safety issue — fire escapes must be clear and accessible at all times.",
+    explanation: "The fire escape is blocked or obstructed. This is a life-safety issue. Fire escapes must be clear and accessible at all times.",
     icon: "🚨",
     severity: "critical",
   },
@@ -76,7 +76,7 @@ export const VIOLATION_MAPPINGS: ViolationMapping[] = [
     id: "carbon-monoxide",
     keywords: ["CARBON MONOXIDE"],
     title: "Carbon monoxide detector missing",
-    explanation: "A required carbon monoxide detector is missing or not working. CO is an odorless, deadly gas — detectors are required by law in every apartment.",
+    explanation: "A required carbon monoxide detector is missing or not working. CO is an odorless, deadly gas. Detectors are required by law in every apartment.",
     icon: "🚨",
     severity: "critical",
   },
@@ -100,7 +100,7 @@ export const VIOLATION_MAPPINGS: ViolationMapping[] = [
     id: "structural",
     keywords: ["STRUCTUR"],
     title: "Structural issue",
-    explanation: "A structural problem was found in the building — this could involve walls, floors, ceilings, or the building's foundation. Structural issues can indicate serious safety concerns.",
+    explanation: "A structural problem was found in the building. This could involve walls, floors, ceilings, or the building's foundation. Structural issues can indicate serious safety concerns.",
     icon: "🚨",
     severity: "critical",
   },
@@ -137,7 +137,7 @@ export const VIOLATION_MAPPINGS: ViolationMapping[] = [
     id: "water-leak",
     keywords: ["WATER LEAK"],
     title: "Water leak",
-    explanation: "Water is leaking into an apartment — from the ceiling, walls, or pipes. The landlord must find and fix the source. Ongoing leaks can cause mold and structural damage.",
+    explanation: "Water is leaking into an apartment from the ceiling, walls, or pipes. The landlord must find and fix the source. Ongoing leaks can cause mold and structural damage.",
     icon: "💧",
     severity: "high",
   },
@@ -209,7 +209,7 @@ export const VIOLATION_MAPPINGS: ViolationMapping[] = [
     id: "electricity",
     keywords: ["ELECTRIC"],
     title: "Electrical issue",
-    explanation: "An electrical problem was found — this could involve wiring, outlets, or fixtures. Electrical issues can pose fire and shock hazards.",
+    explanation: "An electrical problem was found. This could involve wiring, outlets, or fixtures. Electrical issues can pose fire and shock hazards.",
     icon: "⚡",
     severity: "high",
   },
@@ -286,7 +286,7 @@ export const VIOLATION_MAPPINGS: ViolationMapping[] = [
     id: "paint-general",
     keywords: ["PAINT"],
     title: "Paint condition",
-    explanation: "A paint condition was cited — peeling, cracking, or missing paint. The landlord must repaint and address any underlying cause like moisture.",
+    explanation: "A paint condition was cited, such as peeling, cracking, or missing paint. The landlord must repaint and address any underlying cause like moisture.",
     icon: "🎨",
     severity: "medium",
   },
@@ -302,7 +302,7 @@ export const VIOLATION_MAPPINGS: ViolationMapping[] = [
     id: "ceiling-repair",
     keywords: ["CEILING"],
     title: "Ceiling repair needed",
-    explanation: "The ceiling is damaged — this could be cracking, sagging, holes, or water damage. The landlord must repair it and fix any underlying cause.",
+    explanation: "The ceiling is damaged. This could be cracking, sagging, holes, or water damage. The landlord must repair it and fix any underlying cause.",
     icon: "🔧",
     severity: "medium",
   },
@@ -310,7 +310,7 @@ export const VIOLATION_MAPPINGS: ViolationMapping[] = [
     id: "wall-repair",
     keywords: ["WALL", "REPAIR"],
     title: "Wall repair needed",
-    explanation: "Walls are damaged or have holes. The landlord must maintain walls in good condition — holes can let in pests and compromise fire separation between units.",
+    explanation: "Walls are damaged or have holes. The landlord must maintain walls in good condition. Holes can let in pests and compromise fire separation between units.",
     icon: "🔧",
     severity: "medium",
   },
@@ -387,7 +387,7 @@ export const VIOLATION_MAPPINGS: ViolationMapping[] = [
     id: "registration",
     keywords: ["REGISTRATION", "FAILED TO FILE"],
     title: "Owner failed to register with HPD",
-    explanation: "The building owner did not file the required annual registration with HPD. This is an administrative violation — it means HPD may not have current contact information for the landlord.",
+    explanation: "The building owner did not file the required annual registration with HPD. This is an administrative violation. It means HPD may not have current contact information for the landlord.",
     icon: "📋",
     severity: "low",
   },
@@ -784,29 +784,29 @@ export function generatePropertySummary(
   if (severityLevel === "clean") {
     headline = "No violations in the last 2 years. This building has a clean recent record.";
     if (complaintCount > 0) {
-      details = `No recent housing code violations on file.${complaintText ? ` Tenants have filed ${complaintText} recently — complaints don't always lead to violations but are worth noting.` : ''} Overall, this is a positive sign.`;
+      details = `No recent housing code violations on file.${complaintText ? ` Tenants have filed ${complaintText} recently. Complaints don't always lead to violations but are worth noting.` : ''}`;
     } else {
-      details = "No recent housing code violations or tenant complaints on file. This is a positive sign — but it's always worth talking to current tenants about their experience.";
+      details = "No recent housing code violations or tenant complaints on file.";
     }
   } else if (severityLevel === "minor") {
-    headline = `${recentCount} violation${recentCount === 1 ? '' : 's'} in the last 2 years — a relatively light record.`;
+    headline = `${recentCount} violation${recentCount === 1 ? '' : 's'} in the last 2 years. A small number relative to similar buildings.`;
     details = recentClassC > 0
-      ? `${recentClassC} ${recentClassC === 1 ? 'is' : 'are'} Class C (immediately hazardous). Even a small number of Class C violations is worth asking the landlord about before signing.`
-      : "None of the recent violations are classified as immediately hazardous. This is a relatively clean recent record.";
+      ? `${recentClassC} ${recentClassC === 1 ? 'is' : 'are'} Class C (immediately hazardous). Class C violations represent the most serious conditions under NYC's housing code. The details below show the specific conditions cited.`
+      : "None of the recent violations are classified as immediately hazardous.";
   } else if (severityLevel === "moderate") {
     headline = `${recentCount} violations in the last 2 years.`;
     const topIssues = getTopIssueCategories(recentMapped);
-    details = `The most common recent issues are ${topIssues}. ${recentClassC} ${recentClassC === 1 ? 'is' : 'are'} Class C (immediately hazardous — landlord had 24 hours to fix).${complaintText ? ` Tenants have also filed ${complaintText}.` : ''} Ask the landlord specifically what's been done about these.`;
+    details = `The most common recent issues are ${topIssues}. ${recentClassC} ${recentClassC === 1 ? 'is' : 'are'} Class C (immediately hazardous, landlord had 24 hours to fix).${complaintText ? ` Tenants have also filed ${complaintText}.` : ''} Ask the landlord specifically what's been done about these.`;
   } else if (severityLevel === "serious") {
-    headline = `${recentCount} violations in the last 2 years — a troubled recent record.`;
+    headline = `${recentCount} violations in the last 2 years. A meaningful record of unresolved violations.`;
     const topIssues = getTopIssueCategories(recentMapped);
-    details = `${recentClassC} are Class C (immediately hazardous) and ${recentClassB} are Class B (hazardous). The most common issues are ${topIssues}.${litigationCount > 0 ? ` HPD has ${litigationCount} litigation case${litigationCount === 1 ? '' : 's'} against this building.` : ''} This is a red flag — ask hard questions and consider alternatives.`;
+    details = `${recentClassC} are Class C (immediately hazardous) and ${recentClassB} are Class B (hazardous). The most common issues are ${topIssues}.${litigationCount > 0 ? ` HPD has ${litigationCount} litigation case${litigationCount === 1 ? '' : 's'} against this building.` : ''} Ask the landlord about the building's maintenance record and which issues are being addressed.`;
   } else {
     // severe
     headline = hasVacateOrder
       ? "HPD has issued a vacate order for this building. This means conditions were found uninhabitable."
-      : `${recentCount} violations in the last 2 years — a severely troubled record.`;
-    details = `${recentClassC} are Class C (immediately hazardous) and ${recentClassB} are Class B (hazardous).${complaintText ? ` Tenants have filed ${complaintText}.` : ''}${litigationCount > 0 ? ` HPD has ${litigationCount} active litigation case${litigationCount === 1 ? '' : 's'}.` : ''} This building shows a pattern of serious neglect. Proceed with extreme caution.`;
+      : `${recentCount} violations in the last 2 years. A substantial record of unresolved violations.`;
+    details = `${recentClassC} are Class C (immediately hazardous) and ${recentClassB} are Class B (hazardous).${complaintText ? ` Tenants have filed ${complaintText}.` : ''}${litigationCount > 0 ? ` HPD has ${litigationCount} active litigation case${litigationCount === 1 ? '' : 's'}.` : ''} Review the details below before making a decision.`;
   }
 
   // ═══════════════════════════════════════════
