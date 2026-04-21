@@ -1,5 +1,102 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { isOpenViolation, requiresAction, isRecent } from "../../../lib/violation-filters";
+import { calculateHabitableScore } from "../../../lib/habitable-score";
+import { generatePropertySummary } from "../../../lib/violation-mappings";
+import type { PropertyResponse } from "../../../lib/property-types";
+
+function computeDerivedFields(data: PropertyResponse, referenceDate: Date) {
+  const violations = data.violations ?? [];
+  const complaints = data.complaints ?? [];
+  const litigations = data.litigations ?? [];
+
+  // Violation counts
+  const recentOpen = violations.filter((v) => isOpenViolation(v.status) && isRecent(v.inspectiondate, referenceDate));
+  const allOpen = violations.filter((v) => isOpenViolation(v.status));
+
+  const violationCounts = {
+    recent: {
+      total: recentOpen.length,
+      class_c: recentOpen.filter((v) => v.class === "C").length,
+      class_b: recentOpen.filter((v) => v.class === "B").length,
+      class_a: recentOpen.filter((v) => v.class === "A").length,
+      class_i: recentOpen.filter((v) => v.class === "I").length,
+      require_action: recentOpen.filter((v) => requiresAction(v.status)).length,
+      total_open: recentOpen.length,
+    },
+    all_time: {
+      total: allOpen.length,
+      class_c: allOpen.filter((v) => v.class === "C").length,
+      class_b: allOpen.filter((v) => v.class === "B").length,
+      class_a: allOpen.filter((v) => v.class === "A").length,
+      class_i: allOpen.filter((v) => v.class === "I").length,
+      require_action: allOpen.filter((v) => requiresAction(v.status)).length,
+      total_open: allOpen.length,
+    },
+  };
+
+  // Complaint counts (deduplicated by complaint_id)
+  const recentComplaints = complaints.filter((c) => isRecent(c.received_date, referenceDate));
+  const complaintCounts = {
+    recent: {
+      deduped: new Set(recentComplaints.map((c) => c.complaint_id)).size,
+      rows: recentComplaints.length,
+    },
+    all_time: {
+      deduped: new Set(complaints.map((c) => c.complaint_id)).size,
+      rows: complaints.length,
+    },
+  };
+
+  // Litigation counts
+  const litigationCounts = {
+    recent: litigations.filter((l) => isRecent(l.caseopendate, referenceDate)).length,
+    all_time: litigations.length,
+  };
+
+  // Habitable Score (both timeframes)
+  const habitableScore = calculateHabitableScore(data, "recent");
+  const habitableScoreAllTime = calculateHabitableScore(data, "all");
+
+  // Assessment summary (both timeframes)
+  const openViolations = violations.filter((v) => isOpenViolation(v.status));
+  const hasActiveVacate = (data.vacate_orders ?? []).some((v) => !v.rescind_date);
+  const openComplaintCount = complaints.filter((c) => c.complaint_status?.toUpperCase() === "OPEN").length;
+
+  const assessmentSummaryRecent = generatePropertySummary(
+    openViolations.map((v) => ({
+      class: v.class,
+      novdescription: v.novdescription ?? "",
+      inspectiondate: v.inspectiondate ?? undefined,
+    })),
+    complaintCounts.recent.deduped,
+    litigationCounts.recent,
+    hasActiveVacate,
+    openComplaintCount
+  );
+
+  const assessmentSummaryAll = generatePropertySummary(
+    openViolations.map((v) => ({
+      class: v.class,
+      novdescription: v.novdescription ?? "",
+      inspectiondate: v.inspectiondate ?? new Date().toISOString(),
+    })),
+    complaintCounts.all_time.deduped,
+    litigationCounts.all_time,
+    hasActiveVacate,
+    openComplaintCount
+  );
+
+  return {
+    habitable_score: habitableScore,
+    habitable_score_all_time: habitableScoreAllTime,
+    assessment_summary_recent: assessmentSummaryRecent,
+    assessment_summary_all: assessmentSummaryAll,
+    violation_counts: violationCounts,
+    complaint_counts: complaintCounts,
+    litigation_counts: litigationCounts,
+  };
+}
 
 async function safeFetch(url: string, label: string, errors: string[] = []): Promise<Record<string, string>[]> {
   try {
@@ -62,8 +159,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const referenceDate = new Date();
     // Check for fresh cache (less than 24 hours old)
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const twentyFourHoursAgo = new Date(referenceDate.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
     // Fetch violations in batches to bypass Supabase 1000-row default limit
     const cached: Record<string, unknown>[] = [];
@@ -114,7 +212,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      return NextResponse.json({
+      const cachedPayload = {
         violations: cached,
         vacate_orders: cachedVacate.data ?? [],
         complaints: cachedComplaintsList,
@@ -129,6 +227,13 @@ export async function GET(request: NextRequest) {
         work_orders: cachedWorkOrders.data ?? [],
         address_label: cachedAddress,
         nta: cachedProperty.data?.nta ?? null,
+      };
+
+      const derived = computeDerivedFields(cachedPayload as unknown as PropertyResponse, referenceDate);
+
+      return NextResponse.json({
+        ...cachedPayload,
+        ...derived,
         cached_at: cached[0].created_at,
         from_cache: true,
         ...(closestMatch && { closest_match: closestMatch }),
@@ -502,7 +607,7 @@ export async function GET(request: NextRequest) {
       eradicated_unit_count: parseInt(v.eradicated_unit_count) || 0,
     }));
 
-    return NextResponse.json({
+    const freshPayload = {
       violations: mappedViolations,
       vacate_orders: mappedVacate,
       complaints: mappedComplaints,
@@ -517,6 +622,13 @@ export async function GET(request: NextRequest) {
       work_orders: mappedWorkOrders,
       address_label: addressLabel,
       nta: nta,
+    };
+
+    const derived = computeDerivedFields(freshPayload as unknown as PropertyResponse, referenceDate);
+
+    return NextResponse.json({
+      ...freshPayload,
+      ...derived,
       cached_at: new Date().toISOString(),
       from_cache: false,
       fetch_errors: fetchErrors.length > 0 ? fetchErrors : undefined,
