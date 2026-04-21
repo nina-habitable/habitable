@@ -5,21 +5,9 @@
 
 import thresholds from "../scripts/score-thresholds.json";
 import type { PropertyResponse } from "./property-types";
+import { isOpenViolation } from "./violation-filters";
 
 export const SHOW_HABITABLE_SCORE = true;
-
-// Same closed statuses as the property page
-// NOTE: "NOV SENT OUT" is OPEN (active enforcement). Only "INFO NOV SENT OUT" is excluded.
-const CLOSED_STATUSES = new Set([
-  "VIOLATION CLOSED", "VIOLATION DISMISSED", "NOV CERTIFIED LATE",
-  "NOV CERTIFIED ON TIME", "INFO NOV SENT OUT", "LEAD DOCS SUBMITTED, ACCEPTABLE",
-  "CERTIFICATION POSTPONEMENT GRANTED",
-]);
-
-function isOpen(status: string | null): boolean {
-  if (!status) return true;
-  return !CLOSED_STATUSES.has(status.toUpperCase());
-}
 
 interface CleanResult { type: "clean"; tier: 1 | 2; message: string }
 interface ScoreResult {
@@ -116,7 +104,7 @@ export function calculateHabitableScore(
 
   // Count open violations in timeframe
   const openViolations = propertyData.violations.filter(
-    (v) => isOpen(v.status) && isInTimeframe(v.inspectiondate)
+    (v) => isOpenViolation(v.status) && isInTimeframe(v.inspectiondate)
   );
   const classCCount = openViolations.filter((v) => v.class === "C").length;
 
@@ -145,7 +133,7 @@ export function calculateHabitableScore(
   if (openViolations.length === 0) {
     // Count closed violations in timeframe
     const closedViolations = propertyData.violations.filter(
-      (v) => !isOpen(v.status) && isInTimeframe(v.inspectiondate)
+      (v) => !isOpenViolation(v.status) && isInTimeframe(v.inspectiondate)
     ).length;
     // Total complaints in timeframe (open + closed)
     const totalComplaints = complaintCount;
