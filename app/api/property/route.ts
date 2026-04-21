@@ -241,14 +241,13 @@ export async function GET(request: NextRequest) {
     }
 
     const appToken = process.env.NYC_OPEN_DATA_APP_TOKEN || "";
-    const twoYearsAgo = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const fetchErrors: string[] = [];
 
     // Fetch ALL violations (no status filter — frontend filters open vs pending)
     const [violations, vacateOrders, complaints, aepRaw, raw311, leadRaw, omoRaw] = await Promise.all([
       safeFetch(`https://data.cityofnewyork.us/resource/wvxf-dwi5.json?bbl=${encodeURIComponent(bbl)}&$limit=5000`, "HPD Violations", fetchErrors),
       safeFetch(`https://data.cityofnewyork.us/resource/tb8q-a3ar.json?bbl=${encodeURIComponent(bbl)}&$limit=10`, "Vacate Orders", fetchErrors),
-      safeFetch(`https://data.cityofnewyork.us/resource/ygpa-z7cr.json?bbl=${encodeURIComponent(bbl)}&$limit=500&$$app_token=${appToken}&$where=received_date>'${twoYearsAgo}'`, "Complaints", fetchErrors),
+      safeFetch(`https://data.cityofnewyork.us/resource/ygpa-z7cr.json?bbl=${encodeURIComponent(bbl)}&$limit=2000&$$app_token=${appToken}`, "Complaints", fetchErrors),
       safeFetch(`https://data.cityofnewyork.us/resource/hcir-3275.json?bbl=${encodeURIComponent(bbl)}&$limit=50`, "AEP Status", fetchErrors),
       safeFetch(`https://data.cityofnewyork.us/resource/erm2-nwe9.json?$where=bbl='${bbl}' AND agency!='HPD'&$limit=200`, "311 Service Requests", fetchErrors),
       safeFetch(`https://data.cityofnewyork.us/resource/v574-pyre.json?boroid=${bbl[0]}&block=${bbl.slice(1, 6)}&lot=${bbl.slice(6)}&$limit=500`, "Lead Paint Violations", fetchErrors),
