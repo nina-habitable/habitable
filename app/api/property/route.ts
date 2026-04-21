@@ -14,15 +14,51 @@ async function safeFetch(url: string, label: string, errors: string[] = []): Pro
 }
 
 export async function GET(request: NextRequest) {
-  const bbl = request.nextUrl.searchParams.get("bbl");
-  const geoAddress = request.nextUrl.searchParams.get("address");
+  let bbl = request.nextUrl.searchParams.get("bbl");
+  let geoAddress = request.nextUrl.searchParams.get("address");
   const geoBin = request.nextUrl.searchParams.get("bin");
   const geoHood = request.nextUrl.searchParams.get("hood");
+  let closestMatch: { searched_address: string; matched_address: string } | undefined;
 
+  // If address provided without BBL, resolve via Geosearch
+  if (!bbl && geoAddress) {
+    try {
+      const geoRes = await fetch(
+        `https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(geoAddress)}`
+      );
+      if (!geoRes.ok) {
+        return NextResponse.json({ error: "Geosearch service unavailable. Try again later." }, { status: 502 });
+      }
+      const geoData = await geoRes.json();
+      const feature = geoData.features?.[0];
+      const resolvedBbl = feature?.properties?.addendum?.pad?.bbl;
+      if (!resolvedBbl) {
+        return NextResponse.json({ error: "Address not found in NYC. Check spelling and include borough." }, { status: 400 });
+      }
+      bbl = resolvedBbl;
 
-  // Validate BBL parameter
+      // Populate address/hood from Geosearch if not already provided
+      if (!geoAddress || geoAddress === request.nextUrl.searchParams.get("address")) {
+        geoAddress = feature.properties.label || geoAddress;
+      }
+
+      // Fuzzy match detection: compare house numbers
+      const searchedNum = request.nextUrl.searchParams.get("address")?.match(/^\s*(\d+)/)?.[1];
+      const matchedNum = feature.properties.housenumber?.match(/^\d+/)?.[0];
+      if (searchedNum && matchedNum && searchedNum !== matchedNum) {
+        closestMatch = {
+          searched_address: request.nextUrl.searchParams.get("address") || "",
+          matched_address: feature.properties.label || `${feature.properties.housenumber} ${feature.properties.street}`,
+        };
+      }
+    } catch {
+      return NextResponse.json({ error: "Failed to resolve address. Try again later." }, { status: 502 });
+    }
+  }
+
+  // Validate that we have a BBL (either directly or via address resolution)
   if (!bbl) {
-    return NextResponse.json({ error: "BBL parameter is required" }, { status: 400 });
+    return NextResponse.json({ error: "Either bbl or address parameter is required." }, { status: 400 });
   }
 
   try {
@@ -95,6 +131,7 @@ export async function GET(request: NextRequest) {
         nta: cachedProperty.data?.nta ?? null,
         cached_at: cached[0].created_at,
         from_cache: true,
+        ...(closestMatch && { closest_match: closestMatch }),
       });
     }
 
@@ -483,6 +520,7 @@ export async function GET(request: NextRequest) {
       cached_at: new Date().toISOString(),
       from_cache: false,
       fetch_errors: fetchErrors.length > 0 ? fetchErrors : undefined,
+      ...(closestMatch && { closest_match: closestMatch }),
     });
   } catch (error) {
     console.error("Property API error:", error);
