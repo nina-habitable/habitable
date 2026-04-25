@@ -4,9 +4,9 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AddressAutocomplete from "../../components/AddressAutocomplete";
+import FuzzyMatchBanner from "../../components/FuzzyMatchBanner";
 import {
   mapViolation,
-  generatePropertySummary,
   CLASS_INFO,
   type MappedViolation,
 } from "../../../lib/violation-mappings";
@@ -16,10 +16,12 @@ import type {
   Litigation,
   BedbugReport,
   ServiceRequest311,
+  LeadViolation,
+  WorkOrder,
   PropertyResponse,
 } from "../../../lib/property-types";
-import type { LeadViolation, WorkOrder } from "../../../lib/property-types";
-import { calculateHabitableScore, SHOW_HABITABLE_SCORE } from "../../../lib/habitable-score";
+import { SHOW_HABITABLE_SCORE } from "../../../lib/habitable-score";
+import { isOpenViolation, isRecent, TWO_YEARS_MS } from "../../../lib/violation-filters";
 
 // ─── Helpers ────────────────────────────────────────
 
@@ -32,43 +34,14 @@ function formatDate(dateStr: string | null) {
   });
 }
 
-const TWO_YEARS_MS = 2 * 365 * 24 * 60 * 60 * 1000;
 const twoYearsAgo = new Date(Date.now() - TWO_YEARS_MS);
 const twoYearsAgoLabel = twoYearsAgo.toLocaleDateString("en-US", {
   month: "long",
   year: "numeric",
 });
-const twoYearsAgoISO = twoYearsAgo.toISOString();
-
-function isRecent(dateStr: string | null): boolean {
-  if (!dateStr) return false;
-  return dateStr >= twoYearsAgoISO;
-}
 
 // Statuses that are NOT open violations (closed, resolved, or dismissed)
-// NOTE: "NOV SENT OUT" is an OPEN status (notice mailed to owner — active enforcement)
-// Only "INFO NOV SENT OUT" is excluded (informational, not enforcement)
-const CLOSED_STATUSES = new Set([
-  "VIOLATION CLOSED", "VIOLATION DISMISSED", "NOV CERTIFIED LATE",
-  "NOV CERTIFIED ON TIME", "INFO NOV SENT OUT", "LEAD DOCS SUBMITTED, ACCEPTABLE",
-  "CERTIFICATION POSTPONEMENT GRANTED",
-]);
-
-// Statuses where the landlord has definitively failed to fix the problem
-const ACTION_REQUIRED_STATUSES = new Set([
-  "NOT COMPLIED WITH", "INVALID CERTIFICATION", "SECOND NO ACCESS TO RE-INSPECT VIOLATION",
-  "FALSE CERTIFICATION", "DEFECT LETTER ISSUED", "VIOLATION WILL BE REINSPECTED",
-]);
-
-function requiresAction(status: string | null): boolean {
-  if (!status) return false;
-  return ACTION_REQUIRED_STATUSES.has(status.toUpperCase());
-}
-
-function isOpenViolation(status: string | null): boolean {
-  if (!status) return true;
-  return !CLOSED_STATUSES.has(status.toUpperCase());
-}
+// Status filters imported from lib/violation-filters.ts
 
 function titleCase(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
@@ -350,7 +323,6 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
   const searchedQuery = searchParams.get("q") || "";
   const geoAddress = searchParams.get("address") || "";
   const geoBin = searchParams.get("bin") || "";
-  const geoCoords = searchParams.get("coords") || "";
   const geoHood = searchParams.get("hood") || "";
 
   const [searchError, setSearchError] = useState("");
@@ -637,10 +609,11 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
     [timeframeViolations]
   );
 
-  const actionRequiredCount = useMemo(() =>
-    filteredViolations.filter((v) => requiresAction(v.status)).length,
-    [filteredViolations]
-  );
+  // Read pre-computed violation counts from API
+  const vCounts = propertyData
+    ? (timeframe === "recent" ? propertyData.violation_counts?.recent : propertyData.violation_counts?.all_time)
+    : null;
+  const actionRequiredCount = vCounts?.require_action ?? 0;
 
 
   const sortedViolations = useMemo(() =>
@@ -653,33 +626,16 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
     [sortedViolations]
   );
 
-  // Summary uses only open violations (status-filtered)
-  const openViolationsForSummary = useMemo(() =>
-    (propertyData?.violations ?? []).filter((v) => isOpenViolation(v.status)),
-    [propertyData]
-  );
-
-  const summary = useMemo(() => {
-    if (!propertyData) return null;
-    return generatePropertySummary(
-      openViolationsForSummary.map((v) => ({
-        class: v.class,
-        novdescription: v.novdescription ?? "",
-        inspectiondate: timeframe === "all" ? (v.inspectiondate ?? new Date().toISOString()) : (v.inspectiondate ?? undefined),
-      })),
-      propertyData.complaint_count,
-      propertyData.litigations.length,
-      propertyData.vacate_orders.some((v) => !v.rescind_date),
-      propertyData.complaints.filter((c) => c.complaint_status?.toUpperCase() === "OPEN").length
-    );
-  }, [propertyData, openViolationsForSummary, timeframe]);
+  // Read pre-computed summary and score from API response (toggle selects timeframe)
+  const summary = propertyData
+    ? (timeframe === "recent" ? propertyData.assessment_summary_recent : propertyData.assessment_summary_all) ?? null
+    : null;
 
   const topCategories = useMemo(() => getTopCategories(mappedViolations), [mappedViolations]);
 
-  const habitableScore = useMemo(() => {
-    if (!propertyData) return null;
-    return calculateHabitableScore(propertyData, timeframe);
-  }, [propertyData, timeframe]);
+  const habitableScore = propertyData
+    ? (timeframe === "recent" ? propertyData.habitable_score : propertyData.habitable_score_all_time) ?? null
+    : null;
 
   const filteredComplaints = useMemo(() => {
     if (!propertyData) return [];
@@ -691,18 +647,16 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
 
   const complaintCategories = useMemo(() => getComplaintCategories(filteredComplaints), [filteredComplaints]);
 
-  const filteredComplaintCount = useMemo(() => {
-    return new Set(filteredComplaints.map((c) => c.complaint_id)).size;
-  }, [filteredComplaints]);
-
+  // Read pre-computed complaint counts from API
+  const cCounts = propertyData
+    ? (timeframe === "recent" ? propertyData.complaint_counts?.recent : propertyData.complaint_counts?.all_time)
+    : null;
+  const filteredComplaintCount = cCounts?.deduped ?? 0;
   const openComplaintCount = useMemo(() =>
     filteredComplaints.filter((c) => c.complaint_status?.toUpperCase() === "OPEN").length,
     [filteredComplaints]
   );
-  const closedComplaintCount = useMemo(() =>
-    filteredComplaints.length - openComplaintCount,
-    [filteredComplaints, openComplaintCount]
-  );
+  const closedComplaintCount = (cCounts?.rows ?? 0) - openComplaintCount;
 
   const filteredLitigations = useMemo(() => {
     if (!propertyData) return [];
@@ -770,9 +724,16 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
 
   const landlordQuestions = useMemo(() => generateQuestions(mappedViolations), [mappedViolations]);
 
-  const classCount = (cls: string) => filteredViolations.filter((v) => v.class === cls).length;
+  const classCount = (cls: string) => {
+    if (!vCounts) return 0;
+    const key = `class_${cls.toLowerCase()}` as keyof typeof vCounts;
+    return (vCounts[key] as number) ?? 0;
+  };
   const displayedViolations = mappedViolations.slice(0, visibleCount);
   const timeframeLabel = timeframe === "recent" ? `since ${twoYearsAgoLabel}` : "all time";
+  const lCounts = propertyData
+    ? (timeframe === "recent" ? propertyData.litigation_counts?.recent : propertyData.litigation_counts?.all_time) ?? 0
+    : 0;
 
   // Registration contacts
   const contacts = useMemo(() => {
@@ -802,16 +763,6 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
 
   // ─── Render ───────────────────────────────────────
 
-  // Detect address mismatch — only compare house numbers
-  const addressMismatch = useMemo(() => {
-    if (!searchedQuery || !addressLabel) return null;
-    const searchedNum = searchedQuery.match(/^\s*(\d+)/)?.[1];
-    const returnedNum = addressLabel.match(/^\s*(\d+)/)?.[1];
-    if (!searchedNum || !returnedNum) return null;
-    if (searchedNum !== returnedNum) return addressLabel;
-    return null;
-  }, [searchedQuery, addressLabel]);
-
   return (
     <div className="min-h-screen font-[family-name:var(--font-geist-sans)]">
       <header className="border-b border-[var(--card-border)] bg-[var(--card)]">
@@ -825,13 +776,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
       </header>
 
       <main className="mx-auto max-w-2xl px-5 py-6">
-        {addressMismatch && (
-          <div className="rounded-xl border border-[#2A3545] bg-[#1A2533] px-4 py-3 mb-4 text-sm text-[#6B8CAE]">
-            We couldn&apos;t find an exact match for your address. Showing results for <span className="font-semibold text-[var(--foreground)]">{addressMismatch}</span>.
-            {" "}
-            <a href={`https://www.google.com/maps?q=${geoCoords || encodeURIComponent(addressMismatch)}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--foreground)]">View on map to verify this is your building</a>
-          </div>
-        )}
+        <FuzzyMatchBanner closestMatch={propertyData?.closest_match} />
         {loadingProperty && <p className="text-center text-sm text-[var(--muted)] py-12">Loading building data...</p>}
         {error && <div className="rounded-xl border border-red-900 bg-red-950 px-4 py-3 text-sm text-red-400">{error}</div>}
 
@@ -877,7 +822,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                 </p>
                 <p className="text-[10px] text-[var(--muted-dim)] mt-0.5">Habitable Score</p>
                 <p className="text-xs text-[var(--muted-dim)] mt-1">
-                  {habitableScore.violationCount} open violation{habitableScore.violationCount === 1 ? "" : "s"} ({habitableScore.violPerUnit} per unit) · {habitableScore.complaintCount} complaint{habitableScore.complaintCount === 1 ? "" : "s"} · Compared against {habitableScore.peerCount.toLocaleString()} buildings
+                  {habitableScore.violationCount ?? 0} open violation{habitableScore.violationCount === 1 ? "" : "s"} ({habitableScore.violPerUnit ?? 0} per unit) · {habitableScore.complaintCount ?? 0} complaint{habitableScore.complaintCount === 1 ? "" : "s"} · Compared against {(habitableScore.peerCount ?? 0).toLocaleString()} buildings
                 </p>
                 <div className="flex items-center gap-3 mt-2">
                   <Link href="/methodology" className="text-[10px] text-[var(--muted)] hover:text-[var(--foreground)]">How this works &rarr;</Link>
@@ -1138,14 +1083,14 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
             </div>
 
             {/* Violation class breakdown */}
-            {filteredViolations.length > 0 && (
+            {(vCounts?.total ?? 0) > 0 && (
               <div>
                 <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">Current violations</h3>
                 <div className="grid grid-cols-5 gap-2">
                   <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-3 text-center">
                     <p className="text-xl font-bold text-[#FF4D4D]">{actionRequiredCount}</p>
                     <p className="text-[10px] text-[var(--muted-dim)] mt-0.5">Require action</p>
-                    <p className="text-[10px] text-[var(--muted-dim)]">{filteredViolations.length} total open</p>
+                    <p className="text-[10px] text-[var(--muted-dim)]">{vCounts?.total_open ?? 0} total open</p>
                   </div>
                   {(["C", "B", "A", "I"] as const).map((cls) => {
                     const info = CLASS_INFO[cls];
@@ -1166,7 +1111,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
             {/* ─── Collapsible: Tenant complaints & legal action ─── */}
             <CollapsibleSection
               title="Tenant complaints & legal action"
-              summary={`${filteredComplaintCount} complaint${filteredComplaintCount === 1 ? "" : "s"} · ${filteredLitigations.length} litigation`}
+              summary={`${filteredComplaintCount} complaint${filteredComplaintCount === 1 ? "" : "s"} · ${lCounts} litigation`}
             >
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-4 py-3">
@@ -1187,12 +1132,12 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                 </div>
                 <div className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-4 py-3">
                   <p className="text-xs text-[var(--muted-dim)] mb-0.5">Litigation ({timeframeLabel})</p>
-                  <p className="text-lg font-bold text-[var(--foreground)]">{filteredLitigations.length}</p>
-                  {filteredLitigations.length > 0 && (
+                  <p className="text-lg font-bold text-[var(--foreground)]">{lCounts}</p>
+                  {lCounts > 0 && (
                     <p className="text-[10px] text-[var(--muted-dim)]">
                       {pendingLitigation > 0 && <span className="text-[#FFB020]">{pendingLitigation} pending</span>}
-                      {pendingLitigation > 0 && (filteredLitigations.length - pendingLitigation) > 0 && " · "}
-                      {(filteredLitigations.length - pendingLitigation) > 0 && <span>{filteredLitigations.length - pendingLitigation} closed</span>}
+                      {pendingLitigation > 0 && (lCounts - pendingLitigation) > 0 && " · "}
+                      {(lCounts - pendingLitigation) > 0 && <span>{lCounts - pendingLitigation} closed</span>}
                     </p>
                   )}
                   {litigationTypes.length > 0 && (

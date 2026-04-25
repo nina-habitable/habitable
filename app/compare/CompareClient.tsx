@@ -4,36 +4,15 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AddressAutocomplete from "../components/AddressAutocomplete";
-import {
-  generatePropertySummary,
-  splitByRecency,
-  CLASS_INFO,
-} from "../../lib/violation-mappings";
+import FuzzyMatchBanner from "../components/FuzzyMatchBanner";
+import { CLASS_INFO } from "../../lib/violation-mappings";
 import type { PropertyResponse } from "../../lib/property-types";
-import { calculateHabitableScore, SHOW_HABITABLE_SCORE } from "../../lib/habitable-score";
+import { SHOW_HABITABLE_SCORE } from "../../lib/habitable-score";
+import { isOpenViolation, isRecent, TWO_YEARS_MS } from "../../lib/violation-filters";
 
 // ─── Constants ──────────────────────────────────────
 
-const TWO_YEARS_MS = 2 * 365 * 24 * 60 * 60 * 1000;
 const twoYearsAgo = new Date(Date.now() - TWO_YEARS_MS);
-const twoYearsAgoISO = twoYearsAgo.toISOString();
-
-function isRecent(dateStr: string | null): boolean {
-  if (!dateStr) return false;
-  return dateStr >= twoYearsAgoISO;
-}
-
-// NOTE: "NOV SENT OUT" is OPEN (active enforcement). Only "INFO NOV SENT OUT" is excluded.
-const CLOSED_STATUSES = new Set([
-  "VIOLATION CLOSED", "VIOLATION DISMISSED", "NOV CERTIFIED LATE",
-  "NOV CERTIFIED ON TIME", "INFO NOV SENT OUT", "LEAD DOCS SUBMITTED, ACCEPTABLE",
-  "CERTIFICATION POSTPONEMENT GRANTED",
-]);
-
-function isOpenViolation(status: string | null): boolean {
-  if (!status) return true;
-  return !CLOSED_STATUSES.has(status.toUpperCase());
-}
 
 const SEVERITY_COLORS: Record<string, { bg: string; text: string; label: string }> = {
   clean: { bg: "#1B3D1B", text: "#4ADE80", label: "Clean" },
@@ -123,60 +102,29 @@ function BuildingCard({
 }) {
   const { bbl, addressLabel, searchQuery, propertyData } = building;
 
-  // Fuzzy match: compare house numbers
-  const fuzzyMatch = (() => {
-    if (!searchQuery || !addressLabel) return false;
-    const searchedNum = searchQuery.match(/^\s*(\d+)/)?.[1];
-    const returnedNum = addressLabel.match(/^\s*(\d+)/)?.[1];
-    return searchedNum && returnedNum && searchedNum !== returnedNum;
-  })();
 
-  const recentViolations = propertyData.violations.filter((v) =>
-    isRecent(v.inspectiondate) && isOpenViolation(v.status)
-  );
-  const classC = recentViolations.filter((v) => v.class === "C").length;
-  const classB = recentViolations.filter((v) => v.class === "B").length;
-  const classA = recentViolations.filter((v) => v.class === "A").length;
+  // Read pre-computed fields from API response
+  const vCounts = propertyData.violation_counts?.recent;
+  const classC = vCounts?.class_c ?? 0;
+  const classB = vCounts?.class_b ?? 0;
+  const classA = vCounts?.class_a ?? 0;
+  const recentViolationCount = vCounts?.total ?? 0;
 
-  const recentComplaints = propertyData.complaint_count;
-
-  const recentLitigation = propertyData.litigations.filter((l) =>
-    isRecent(l.caseopendate)
-  ).length;
+  const recentComplaints = propertyData.complaint_counts?.recent?.deduped ?? propertyData.complaint_count;
+  const recentLitigation = propertyData.litigation_counts?.recent ?? 0;
 
   const bedbugs = propertyData.bedbug_reports ?? [];
   const recentBedbugs = bedbugs.filter(
     (r) => r.infested_unit_count > 0 && r.filing_date && new Date(r.filing_date) >= twoYearsAgo
   );
 
-  const openViolations = propertyData.violations.filter((v) => isOpenViolation(v.status));
-  const summary = generatePropertySummary(
-    openViolations.map((v) => ({
-      class: v.class,
-      novdescription: v.novdescription ?? "",
-      inspectiondate: v.inspectiondate ?? undefined,
-    })),
-    propertyData.complaint_count,
-    propertyData.litigations.length,
-    propertyData.vacate_orders.some((v) => !v.rescind_date)
-  );
-
-  const severity = SEVERITY_COLORS[summary.severityLevel] ?? SEVERITY_COLORS.moderate;
-
-  const { recent } = splitByRecency(
-    openViolations.map((v) => ({
-      class: v.class,
-      novdescription: v.novdescription ?? "",
-      inspectiondate: v.inspectiondate ?? undefined,
-    }))
-  );
+  const summary = propertyData.assessment_summary_recent;
+  const severity = SEVERITY_COLORS[summary?.severityLevel ?? "moderate"] ?? SEVERITY_COLORS.moderate;
 
   return (
     <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5 flex flex-col">
-      {/* Fuzzy match note */}
-      {fuzzyMatch && searchQuery && (
-        <p className="text-[10px] text-[#6B8CAE] mb-2">You searched for {searchQuery}</p>
-      )}
+      {/* Fuzzy match banner */}
+      <FuzzyMatchBanner closestMatch={propertyData.closest_match} />
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="min-w-0">
@@ -207,7 +155,8 @@ function BuildingCard({
       {/* Severity badge or score */}
       <div className="mb-4 space-y-1">
         {SHOW_HABITABLE_SCORE ? (() => {
-          const score = calculateHabitableScore(propertyData, "recent");
+          const score = propertyData.habitable_score;
+          if (!score) return <p className="text-xs text-[var(--muted-dim)]">Score unavailable</p>;
           if (score.type === "score") {
             return (
               <div>
@@ -244,7 +193,7 @@ function BuildingCard({
         <div className="flex justify-between text-sm">
           <span className="text-[var(--muted)]">Violations (2yr)</span>
           <span className="font-semibold text-[var(--foreground)]">
-            {recent.length}
+            {recentViolationCount}
           </span>
         </div>
         <div className="flex justify-between text-xs text-[var(--muted-dim)] pl-3">
