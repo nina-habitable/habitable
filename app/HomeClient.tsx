@@ -4,14 +4,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AddressAutocomplete, { type Suggestion } from "./components/AddressAutocomplete";
+import { detectFuzzyMatch } from "../lib/address-matching";
 
 export default function HomeClient() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  function gotoBbl(bbl: string, query: string, label: string, bin: string, coords: string, neighbourhood: string) {
+  function gotoBbl(bbl: string, query: string, label: string, bin: string, coords: string, neighbourhood: string, searched?: string) {
     const params = new URLSearchParams({ q: query, address: label, bin, coords, hood: neighbourhood });
+    if (searched) params.set("searched", searched);
     router.push(`/property/${bbl}?${params.toString()}`);
   }
 
@@ -40,7 +42,13 @@ export default function HomeClient() {
       const neighbourhood = feature.properties.neighbourhood || "";
       const [lng, lat] = feature.geometry?.coordinates || [];
       const coords = lat && lng ? `${lat},${lng}` : "";
-      gotoBbl(foundBbl, address, label, bin, coords, neighbourhood);
+      const fuzzy = detectFuzzyMatch(address, {
+        housenumber: feature.properties.housenumber,
+        street: feature.properties.street,
+        borough: feature.properties.borough,
+        label,
+      });
+      gotoBbl(foundBbl, address, label, bin, coords, neighbourhood, fuzzy ? address : undefined);
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);

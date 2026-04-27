@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AddressAutocomplete from "../../components/AddressAutocomplete";
 import FuzzyMatchBanner from "../../components/FuzzyMatchBanner";
+import { detectFuzzyMatch } from "../../../lib/address-matching";
 import {
   mapViolation,
   CLASS_INFO,
@@ -324,6 +325,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
   const geoAddress = searchParams.get("address") || "";
   const geoBin = searchParams.get("bin") || "";
   const geoHood = searchParams.get("hood") || "";
+  const searchedAddress = searchParams.get("searched") || "";
 
   const [searchError, setSearchError] = useState("");
   const [addressLabel, setAddressLabel] = useState(geoAddress);
@@ -563,8 +565,9 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
     loadLinked();
   }, [propertyData, bbl]);
 
-  function gotoBbl(newBbl: string, q: string, label: string, bin: string, coords: string, hood: string) {
+  function gotoBbl(newBbl: string, q: string, label: string, bin: string, coords: string, hood: string, searched?: string) {
     const params = new URLSearchParams({ q, address: label, bin, coords, hood });
+    if (searched) params.set("searched", searched);
     router.push(`/property/${newBbl}?${params.toString()}`);
   }
 
@@ -585,7 +588,13 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
       const hood = feature.properties.neighbourhood || "";
       const [lng, lat] = feature.geometry?.coordinates || [];
       const coords = lat && lng ? `${lat},${lng}` : "";
-      gotoBbl(foundBbl, addr, label, foundBin, coords, hood);
+      const fuzzy = detectFuzzyMatch(addr, {
+        housenumber: feature.properties.housenumber,
+        street: feature.properties.street,
+        borough: feature.properties.borough,
+        label,
+      });
+      gotoBbl(foundBbl, addr, label, foundBin, coords, hood, fuzzy ? addr : undefined);
     } catch {
       setSearchError("Something went wrong");
     }
@@ -776,7 +785,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
       </header>
 
       <main className="mx-auto max-w-2xl px-5 py-6">
-        <FuzzyMatchBanner closestMatch={propertyData?.closest_match} />
+        <FuzzyMatchBanner closestMatch={searchedAddress && addressLabel ? { searched_address: searchedAddress, matched_address: addressLabel } : undefined} />
         {loadingProperty && <p className="text-center text-sm text-[var(--muted)] py-12">Loading building data...</p>}
         {error && <div className="rounded-xl border border-red-900 bg-red-950 px-4 py-3 text-sm text-red-400">{error}</div>}
 

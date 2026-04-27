@@ -97,7 +97,6 @@ export interface PropertyResponse {
   violation_counts?: { recent: { total: number; class_c: number; class_b: number; class_a: number; class_i: number; require_action: number; total_open: number }; all_time: { total: number; class_c: number; class_b: number; class_a: number; class_i: number; require_action: number; total_open: number } };
   complaint_counts?: { recent: { deduped: number; rows: number }; all_time: { deduped: number; rows: number } };
   litigation_counts?: { recent: number; all_time: number };
-  closest_match?: { searched_address: string; matched_address: string };
 }
 
 export interface LeadViolation {
