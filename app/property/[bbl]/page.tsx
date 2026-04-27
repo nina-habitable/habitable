@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { createClient } from "@supabase/supabase-js";
+import { CLOSED_STATUSES } from "../../../lib/violation-filters";
 import PropertyContent from "./PropertyClient";
 
 const supabaseUrl = "https://enjqwfxtwokyeplwpzoi.supabase.co";
@@ -14,11 +15,7 @@ export async function generateMetadata({ params }: { params: { bbl: string } }):
     if (!supabaseKey) throw new Error("No key");
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const CLOSED = new Set([
-      "VIOLATION CLOSED", "VIOLATION DISMISSED", "NOV CERTIFIED LATE",
-      "NOV CERTIFIED ON TIME", "INFO NOV SENT OUT", "LEAD DOCS SUBMITTED, ACCEPTABLE",
-      "CERTIFICATION POSTPONEMENT GRANTED",
-    ]);
+    const closedSet = new Set<string>(CLOSED_STATUSES);
 
     const [propResult, complaintResult] = await Promise.all([
       supabase.from("properties").select("address,nta").eq("bbl", bbl).single(),
@@ -39,7 +36,7 @@ export async function generateMetadata({ params }: { params: { bbl: string } }):
       offset += 1000;
     }
 
-    const violationCount = allStatuses.filter((s) => !CLOSED.has(s)).length;
+    const violationCount = allStatuses.filter((s) => !closedSet.has(s)).length;
     const complaintCount = new Set((complaintResult.data ?? []).map((c: { complaint_id: string }) => c.complaint_id)).size;
 
     const title = `${address} — Building Report | Habitable`;

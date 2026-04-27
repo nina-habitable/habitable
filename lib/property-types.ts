@@ -89,6 +89,14 @@ export interface PropertyResponse {
   fetch_errors?: string[];
   address_label?: string;
   nta?: string | null;
+  // Derived fields (computed server-side)
+  habitable_score?: { type: string; tier?: number; message?: string; percentile?: number; violPerUnit?: number; violationCount?: number; classCCount?: number; complaintCount?: number; peerCount?: number; bucketLabel?: string; accentColor?: string; reason?: string };
+  habitable_score_all_time?: { type: string; tier?: number; message?: string; percentile?: number; violPerUnit?: number; violationCount?: number; classCCount?: number; complaintCount?: number; peerCount?: number; bucketLabel?: string; accentColor?: string; reason?: string };
+  assessment_summary_recent?: { headline: string; details: string; olderNote: string | null; severityLevel: string; recentCount: number; olderCount: number };
+  assessment_summary_all?: { headline: string; details: string; olderNote: string | null; severityLevel: string; recentCount: number; olderCount: number };
+  violation_counts?: { recent: { total: number; class_c: number; class_b: number; class_a: number; class_i: number; require_action: number; total_open: number }; all_time: { total: number; class_c: number; class_b: number; class_a: number; class_i: number; require_action: number; total_open: number } };
+  complaint_counts?: { recent: { deduped: number; rows: number }; all_time: { deduped: number; rows: number } };
+  litigation_counts?: { recent: number; all_time: number };
 }
 
 export interface LeadViolation {

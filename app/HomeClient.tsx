@@ -10,8 +10,9 @@ export default function HomeClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  function gotoBbl(bbl: string, query: string, label: string, bin: string, coords: string, neighbourhood: string) {
+  function gotoBbl(bbl: string, query: string, label: string, bin: string, coords: string, neighbourhood: string, searched?: string) {
     const params = new URLSearchParams({ q: query, address: label, bin, coords, hood: neighbourhood });
+    if (searched) params.set("searched", searched);
     router.push(`/property/${bbl}?${params.toString()}`);
   }
 
@@ -40,7 +41,7 @@ export default function HomeClient() {
       const neighbourhood = feature.properties.neighbourhood || "";
       const [lng, lat] = feature.geometry?.coordinates || [];
       const coords = lat && lng ? `${lat},${lng}` : "";
-      gotoBbl(foundBbl, address, label, bin, coords, neighbourhood);
+      gotoBbl(foundBbl, address, label, bin, coords, neighbourhood, address);
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);
@@ -48,7 +49,7 @@ export default function HomeClient() {
   }
 
   function handleSelect(s: Suggestion) {
-    gotoBbl(s.bbl, s.name, s.label, s.bin, s.coords, s.neighbourhood);
+    gotoBbl(s.bbl, s.name, s.label, s.bin, s.coords, s.neighbourhood, s.name);
   }
 
   return (

@@ -115,7 +115,6 @@ export async function GET(request: NextRequest) {
   let geoAddress = request.nextUrl.searchParams.get("address");
   const geoBin = request.nextUrl.searchParams.get("bin");
   const geoHood = request.nextUrl.searchParams.get("hood");
-  let closestMatch: { searched_address: string; matched_address: string } | undefined;
 
   // If address provided without BBL, resolve via Geosearch
   if (!bbl && geoAddress) {
@@ -139,15 +138,6 @@ export async function GET(request: NextRequest) {
         geoAddress = feature.properties.label || geoAddress;
       }
 
-      // Fuzzy match detection: compare house numbers
-      const searchedNum = request.nextUrl.searchParams.get("address")?.match(/^\s*(\d+)/)?.[1];
-      const matchedNum = feature.properties.housenumber?.match(/^\d+/)?.[0];
-      if (searchedNum && matchedNum && searchedNum !== matchedNum) {
-        closestMatch = {
-          searched_address: request.nextUrl.searchParams.get("address") || "",
-          matched_address: feature.properties.label || `${feature.properties.housenumber} ${feature.properties.street}`,
-        };
-      }
     } catch {
       return NextResponse.json({ error: "Failed to resolve address. Try again later." }, { status: 502 });
     }
@@ -236,7 +226,6 @@ export async function GET(request: NextRequest) {
         ...derived,
         cached_at: cached[0].created_at,
         from_cache: true,
-        ...(closestMatch && { closest_match: closestMatch }),
       });
     }
 
@@ -631,7 +620,6 @@ export async function GET(request: NextRequest) {
       cached_at: new Date().toISOString(),
       from_cache: false,
       fetch_errors: fetchErrors.length > 0 ? fetchErrors : undefined,
-      ...(closestMatch && { closest_match: closestMatch }),
     });
   } catch (error) {
     console.error("Property API error:", error);
