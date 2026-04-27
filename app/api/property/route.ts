@@ -110,6 +110,59 @@ async function safeFetch(url: string, label: string, errors: string[] = []): Pro
   }
 }
 
+const KNOWN_BOROUGHS = [
+  "manhattan",
+  "brooklyn",
+  "queens",
+  "bronx",
+  "staten island",
+];
+
+function normalizeStreet(s: string | undefined | null): string {
+  if (!s) return "";
+  let result = s.toLowerCase().trim();
+
+  // Strip trailing borough name if present (handles cases where user
+  // typed "howard ave brooklyn" without a comma)
+  for (const borough of KNOWN_BOROUGHS) {
+    const re = new RegExp(`\\s+${borough}\\s*$`);
+    result = result.replace(re, "");
+  }
+
+  // Normalize common street type abbreviations so "ave" matches "avenue"
+  result = result
+    .replace(/\bave(nue)?\b\.?/g, "avenue")
+    .replace(/\bst(reet)?\b\.?/g, "street")
+    .replace(/\brd\.?\b/g, "road")
+    .replace(/\bblvd\.?\b/g, "boulevard")
+    .replace(/\bpl(ace)?\b\.?/g, "place")
+    .replace(/\bdr(ive)?\b\.?/g, "drive")
+    .replace(/\bln\.?\b/g, "lane")
+    .replace(/\bct\.?\b/g, "court")
+    .replace(/\bpkwy\.?\b/g, "parkway")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return result;
+}
+
+function extractBoroughFromInput(s: string): string {
+  const lower = s.toLowerCase();
+  // Try the after-comma form first
+  const afterComma = lower.split(",")[1]?.trim();
+  if (afterComma) {
+    for (const borough of KNOWN_BOROUGHS) {
+      if (afterComma.includes(borough)) return borough;
+    }
+  }
+  // Try trailing borough form (no comma)
+  for (const borough of KNOWN_BOROUGHS) {
+    const re = new RegExp(`\\s+${borough}\\s*$`);
+    if (re.test(lower)) return borough;
+  }
+  return "";
+}
+
 export async function GET(request: NextRequest) {
   let bbl = request.nextUrl.searchParams.get("bbl");
   let geoAddress = request.nextUrl.searchParams.get("address");
@@ -139,13 +192,37 @@ export async function GET(request: NextRequest) {
         geoAddress = feature.properties.label || geoAddress;
       }
 
-      // Fuzzy match detection: compare house numbers
-      const searchedNum = request.nextUrl.searchParams.get("address")?.match(/^\s*(\d+)/)?.[1];
-      const matchedNum = feature.properties.housenumber?.match(/^\d+/)?.[0];
-      if (searchedNum && matchedNum && searchedNum !== matchedNum) {
+      // Fuzzy match detection. Fire the banner when Geosearch returned
+      // something different from what the user typed. We compare three
+      // components — house number, street name, borough — using normalized
+      // strings (lowercased, trimmed, abbreviations expanded, trailing
+      // borough stripped from street). closestMatch is set if ANY component
+      // differs. This is intentionally broad: false positives are far less
+      // harmful than false negatives.
+      const originalAddress = request.nextUrl.searchParams.get("address") || "";
+
+      const searchedNum = originalAddress.match(/^\s*(\d[\d-]*)/)?.[1] || "";
+      const matchedNum = (feature.properties.housenumber || "").match(/^\d[\d-]*/)?.[0] || "";
+
+      const afterNum = originalAddress.replace(/^\s*\d[\d-]*\s*/, "");
+      const rawSearchedStreet = (afterNum.split(",")[0] || "");
+      const searchedStreet = normalizeStreet(rawSearchedStreet);
+      const matchedStreet = normalizeStreet(feature.properties.street);
+
+      const searchedBorough = extractBoroughFromInput(originalAddress);
+      const matchedBorough = (feature.properties.borough || "").toLowerCase().trim();
+
+      let isMismatch = false;
+      if (searchedNum && matchedNum && searchedNum !== matchedNum) isMismatch = true;
+      if (searchedStreet && matchedStreet && searchedStreet !== matchedStreet) isMismatch = true;
+      if (searchedBorough && matchedBorough && searchedBorough !== matchedBorough) isMismatch = true;
+
+      if (isMismatch) {
         closestMatch = {
-          searched_address: request.nextUrl.searchParams.get("address") || "",
-          matched_address: feature.properties.label || `${feature.properties.housenumber} ${feature.properties.street}`,
+          searched_address: originalAddress,
+          matched_address:
+            feature.properties.label ||
+            `${feature.properties.housenumber} ${feature.properties.street}`,
         };
       }
     } catch {
