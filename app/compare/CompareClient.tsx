@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AddressAutocomplete from "../components/AddressAutocomplete";
 import FuzzyMatchBanner from "../components/FuzzyMatchBanner";
-import { detectFuzzyMatch, type FuzzyMatchResult } from "../../lib/address-matching";
+import { detectFuzzyMatchFromLabel } from "../../lib/address-matching";
 import { CLASS_INFO } from "../../lib/violation-mappings";
 import type { PropertyResponse } from "../../lib/property-types";
 import { SHOW_HABITABLE_SCORE } from "../../lib/habitable-score";
@@ -29,7 +29,6 @@ interface BuildingData {
   bbl: string;
   addressLabel: string;
   searchQuery?: string;
-  fuzzyMatch?: FuzzyMatchResult | null;
   propertyData: PropertyResponse;
 }
 
@@ -38,20 +37,20 @@ interface BuildingData {
 function BuildingSearch({
   onResult,
 }: {
-  onResult: (bbl: string, label: string, data: PropertyResponse, searchQuery?: string, fuzzyMatch?: FuzzyMatchResult | null) => void;
+  onResult: (bbl: string, label: string, data: PropertyResponse, searchQuery?: string) => void;
   loading?: boolean;
 }) {
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
 
-  async function fetchAndAdd(bbl: string, label: string, query?: string, fuzzy?: FuzzyMatchResult | null) {
+  async function fetchAndAdd(bbl: string, label: string, query?: string) {
     setAdding(true);
     setError("");
     try {
       const res = await fetch(`/api/property?bbl=${encodeURIComponent(bbl)}`);
       if (!res.ok) throw new Error();
       const data: PropertyResponse = await res.json();
-      onResult(bbl, label, data, query, fuzzy);
+      onResult(bbl, label, data, query);
     } catch {
       setError("Failed to load property data");
     } finally {
@@ -73,13 +72,7 @@ function BuildingSearch({
       const foundBbl = feature?.properties?.addendum?.pad?.bbl;
       if (!foundBbl) { setError("Address not found"); setAdding(false); return; }
       const label = feature.properties.label || foundBbl;
-      const fuzzy = detectFuzzyMatch(address, {
-        housenumber: feature.properties.housenumber,
-        street: feature.properties.street,
-        borough: feature.properties.borough,
-        label,
-      });
-      await fetchAndAdd(foundBbl, label, address, fuzzy);
+      await fetchAndAdd(foundBbl, label, address);
     } catch {
       setError("Something went wrong");
       setAdding(false);
@@ -132,7 +125,7 @@ function BuildingCard({
   return (
     <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5 flex flex-col">
       {/* Fuzzy match banner */}
-      <FuzzyMatchBanner closestMatch={building.fuzzyMatch ?? undefined} />
+      <FuzzyMatchBanner closestMatch={detectFuzzyMatchFromLabel(building.searchQuery || "", building.addressLabel) ?? undefined} />
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="min-w-0">
@@ -326,9 +319,9 @@ function CompareContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleResult(bbl: string, label: string, data: PropertyResponse, searchQuery?: string, fuzzyMatch?: FuzzyMatchResult | null) {
+  function handleResult(bbl: string, label: string, data: PropertyResponse, searchQuery?: string) {
     if (buildings.some((b) => b.bbl === bbl)) return;
-    const updated = [...buildings, { bbl, addressLabel: label, searchQuery, fuzzyMatch, propertyData: data }];
+    const updated = [...buildings, { bbl, addressLabel: label, searchQuery, propertyData: data }];
     setBuildings(updated);
     updateUrl(updated);
   }

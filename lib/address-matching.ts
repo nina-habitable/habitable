@@ -104,3 +104,46 @@ export function detectFuzzyMatch(
 
   return null;
 }
+
+/**
+ * Parse an address_label string (from HPD/API) into components.
+ * Format: "553 HOWARD AVENUE, Brooklyn, NY" or similar.
+ */
+function parseAddressLabel(label: string): {
+  housenumber: string;
+  street: string;
+  borough: string;
+} {
+  const segments = label.split(",").map(s => s.trim());
+  const firstSegment = segments[0] || "";
+
+  // Extract leading digits-and-hyphens as housenumber
+  const houseMatch = firstSegment.match(/^(\d[\d-]*)\s*(.*)$/);
+  const housenumber = houseMatch?.[1] || "";
+  const street = houseMatch?.[2] || firstSegment;
+
+  // Borough is NOT reliably in address_label (NYC labels show city names
+  // like "Long Island City" which don't map 1:1 to boroughs).
+  // Return empty; caller's borough comparison will skip when empty.
+  const borough = "";
+
+  return { housenumber, street, borough };
+}
+
+/**
+ * Compare a user's typed address against the API's address_label.
+ * Used at render time when we have the canonical HPD address.
+ */
+export function detectFuzzyMatchFromLabel(
+  typedInput: string,
+  addressLabel: string
+): FuzzyMatchResult | null {
+  if (!typedInput || !addressLabel) return null;
+  const synthetic = parseAddressLabel(addressLabel);
+  return detectFuzzyMatch(typedInput, {
+    housenumber: synthetic.housenumber,
+    street: synthetic.street,
+    borough: synthetic.borough,
+    label: addressLabel,
+  });
+}

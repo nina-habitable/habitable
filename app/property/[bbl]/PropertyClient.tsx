@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AddressAutocomplete from "../../components/AddressAutocomplete";
 import FuzzyMatchBanner from "../../components/FuzzyMatchBanner";
-import { detectFuzzyMatch } from "../../../lib/address-matching";
+import { detectFuzzyMatchFromLabel } from "../../../lib/address-matching";
 import {
   mapViolation,
   CLASS_INFO,
@@ -588,20 +588,14 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
       const hood = feature.properties.neighbourhood || "";
       const [lng, lat] = feature.geometry?.coordinates || [];
       const coords = lat && lng ? `${lat},${lng}` : "";
-      const fuzzy = detectFuzzyMatch(addr, {
-        housenumber: feature.properties.housenumber,
-        street: feature.properties.street,
-        borough: feature.properties.borough,
-        label,
-      });
-      gotoBbl(foundBbl, addr, label, foundBin, coords, hood, fuzzy ? addr : undefined);
+      gotoBbl(foundBbl, addr, label, foundBin, coords, hood, addr);
     } catch {
       setSearchError("Something went wrong");
     }
   }
 
   function handleHeaderSelect(s: { bbl: string; bin: string; name: string; neighbourhood: string; label: string; coords: string }) {
-    gotoBbl(s.bbl, s.name, s.label, s.bin, s.coords, s.neighbourhood);
+    gotoBbl(s.bbl, s.name, s.label, s.bin, s.coords, s.neighbourhood, s.name);
   }
 
   // ─── Derived data ───
@@ -785,7 +779,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
       </header>
 
       <main className="mx-auto max-w-2xl px-5 py-6">
-        <FuzzyMatchBanner closestMatch={searchedAddress && addressLabel ? { searched_address: searchedAddress, matched_address: addressLabel } : undefined} />
+        <FuzzyMatchBanner closestMatch={detectFuzzyMatchFromLabel(searchedAddress, addressLabel) ?? undefined} />
         {loadingProperty && <p className="text-center text-sm text-[var(--muted)] py-12">Loading building data...</p>}
         {error && <div className="rounded-xl border border-red-900 bg-red-950 px-4 py-3 text-sm text-red-400">{error}</div>}
 

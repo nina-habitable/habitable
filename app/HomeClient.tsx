@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AddressAutocomplete, { type Suggestion } from "./components/AddressAutocomplete";
-import { detectFuzzyMatch } from "../lib/address-matching";
 
 export default function HomeClient() {
   const router = useRouter();
@@ -42,13 +41,7 @@ export default function HomeClient() {
       const neighbourhood = feature.properties.neighbourhood || "";
       const [lng, lat] = feature.geometry?.coordinates || [];
       const coords = lat && lng ? `${lat},${lng}` : "";
-      const fuzzy = detectFuzzyMatch(address, {
-        housenumber: feature.properties.housenumber,
-        street: feature.properties.street,
-        borough: feature.properties.borough,
-        label,
-      });
-      gotoBbl(foundBbl, address, label, bin, coords, neighbourhood, fuzzy ? address : undefined);
+      gotoBbl(foundBbl, address, label, bin, coords, neighbourhood, address);
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);
@@ -56,7 +49,7 @@ export default function HomeClient() {
   }
 
   function handleSelect(s: Suggestion) {
-    gotoBbl(s.bbl, s.name, s.label, s.bin, s.coords, s.neighbourhood);
+    gotoBbl(s.bbl, s.name, s.label, s.bin, s.coords, s.neighbourhood, s.name);
   }
 
   return (
