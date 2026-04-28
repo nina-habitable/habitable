@@ -110,6 +110,33 @@ async function safeFetch(url: string, label: string, errors: string[] = []): Pro
   }
 }
 
+async function readAllRowsByBbl(table: string, bbl: string): Promise<Record<string, unknown>[]> {
+  const allRows: Record<string, unknown>[] = [];
+  const batchSize = 1000;
+  let offset = 0;
+
+  while (true) {
+    const { data: batch, error } = await supabaseAdmin
+      .from(table)
+      .select("*")
+      .eq("bbl", bbl)
+      .range(offset, offset + batchSize - 1);
+
+    if (error) {
+      console.error(`[cache-read-pagination] Error reading ${table} for bbl ${bbl}:`, error);
+      break;
+    }
+
+    if (!batch || batch.length === 0) break;
+    allRows.push(...batch);
+
+    if (batch.length < batchSize) break;
+    offset += batchSize;
+  }
+
+  return allRows;
+}
+
 async function fetchComplaintsPaginated(
   bbl: string,
   appToken: string,
@@ -222,14 +249,14 @@ export async function GET(request: NextRequest) {
       // Use supabaseAdmin for all cached reads to bypass RLS
       const [cachedVacate, cachedComplaints, cachedLitigations, cachedBedbugs, cachedProperty, cachedBuildingDetails, cachedContacts, cachedAep, cached311, cachedLead, cachedWorkOrders] = await Promise.all([
         supabaseAdmin.from("vacate_orders").select("*").eq("bbl", bbl),
-        supabaseAdmin.from("complaints").select("*").eq("bbl", bbl).range(0, 4999),
-        supabaseAdmin.from("litigations").select("*").eq("bbl", bbl).limit(1000),
+        readAllRowsByBbl("complaints", bbl).then((data) => ({ data: data as Record<string, string>[], error: null })),
+        readAllRowsByBbl("litigations", bbl).then((data) => ({ data: data as Record<string, string>[], error: null })),
         supabaseAdmin.from("bedbug_reports").select("*").eq("bbl", bbl),
         supabaseAdmin.from("properties").select("address,nta").eq("bbl", bbl).single(),
         supabaseAdmin.from("building_details").select("*").eq("bbl", bbl).maybeSingle(),
         supabaseAdmin.from("registration_contacts").select("*").eq("bbl", bbl),
         supabaseAdmin.from("aep_status").select("*").eq("bbl", bbl),
-        supabaseAdmin.from("service_requests_311").select("*").eq("bbl", bbl),
+        readAllRowsByBbl("service_requests_311", bbl).then((data) => ({ data: data as Record<string, string>[], error: null })),
         supabaseAdmin.from("lead_violations").select("*").eq("bbl", bbl),
         supabaseAdmin.from("work_orders").select("*").eq("bbl", bbl),
       ]);
