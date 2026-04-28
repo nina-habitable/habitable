@@ -110,6 +110,52 @@ async function safeFetch(url: string, label: string, errors: string[] = []): Pro
   }
 }
 
+async function fetchComplaintsPaginated(
+  bbl: string,
+  appToken: string,
+  errors: string[]
+): Promise<Record<string, string>[]> {
+  const allRows: Record<string, string>[] = [];
+  const pageSize = 1000;
+  const maxPages = 10; // safety cap: 10,000 rows max per building
+  let offset = 0;
+
+  for (let page = 0; page < maxPages; page++) {
+    const url =
+      `https://data.cityofnewyork.us/resource/ygpa-z7cr.json` +
+      `?bbl=${encodeURIComponent(bbl)}` +
+      `&$order=received_date DESC` +
+      `&$limit=${pageSize}` +
+      `&$offset=${offset}` +
+      `&$$app_token=${appToken}`;
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Complaints API returned ${res.status} on page ${page}`);
+      const batch = (await res.json()) as Record<string, string>[];
+
+      if (batch.length === 0) break;
+      allRows.push(...batch);
+
+      if (batch.length < pageSize) break;
+
+      offset += pageSize;
+    } catch (error) {
+      console.error(`Complaints fetch error on page ${page} for bbl ${bbl}:`, error);
+      errors.push(`Complaints (page ${page})`);
+      break;
+    }
+  }
+
+  if (allRows.length >= maxPages * pageSize) {
+    console.warn(
+      `[complaints-pagination] BBL ${bbl} hit max pages (${maxPages}). Returned ${allRows.length} rows. Older complaints likely truncated.`
+    );
+  }
+
+  return allRows;
+}
+
 export async function GET(request: NextRequest) {
   let bbl = request.nextUrl.searchParams.get("bbl");
   let geoAddress = request.nextUrl.searchParams.get("address");
@@ -236,7 +282,7 @@ export async function GET(request: NextRequest) {
     const [violations, vacateOrders, complaints, aepRaw, raw311, leadRaw, omoRaw] = await Promise.all([
       safeFetch(`https://data.cityofnewyork.us/resource/wvxf-dwi5.json?bbl=${encodeURIComponent(bbl)}&$limit=5000`, "HPD Violations", fetchErrors),
       safeFetch(`https://data.cityofnewyork.us/resource/tb8q-a3ar.json?bbl=${encodeURIComponent(bbl)}&$limit=10`, "Vacate Orders", fetchErrors),
-      safeFetch(`https://data.cityofnewyork.us/resource/ygpa-z7cr.json?bbl=${encodeURIComponent(bbl)}&$limit=2000&$$app_token=${appToken}`, "Complaints", fetchErrors),
+      fetchComplaintsPaginated(bbl, appToken, fetchErrors),
       safeFetch(`https://data.cityofnewyork.us/resource/hcir-3275.json?bbl=${encodeURIComponent(bbl)}&$limit=50`, "AEP Status", fetchErrors),
       safeFetch(`https://data.cityofnewyork.us/resource/erm2-nwe9.json?$where=bbl='${bbl}' AND agency!='HPD'&$limit=200`, "311 Service Requests", fetchErrors),
       safeFetch(`https://data.cityofnewyork.us/resource/v574-pyre.json?boroid=${bbl[0]}&block=${bbl.slice(1, 6)}&lot=${bbl.slice(6)}&$limit=500`, "Lead Paint Violations", fetchErrors),
