@@ -655,11 +655,8 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
     ? (timeframe === "recent" ? propertyData.complaint_counts?.recent : propertyData.complaint_counts?.all_time)
     : null;
   const filteredComplaintCount = cCounts?.deduped ?? 0;
-  const openComplaintCount = useMemo(() =>
-    filteredComplaints.filter((c) => c.complaint_status?.toUpperCase() === "OPEN").length,
-    [filteredComplaints]
-  );
-  const closedComplaintCount = (cCounts?.rows ?? 0) - openComplaintCount;
+  const openComplaintCount = cCounts?.open ?? 0;
+  const closedComplaintCount = cCounts?.closed ?? 0;
 
   const filteredLitigations = useMemo(() => {
     if (!propertyData) return [];

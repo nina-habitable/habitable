@@ -37,15 +37,22 @@ function computeDerivedFields(data: PropertyResponse, referenceDate: Date) {
 
   // Complaint counts (deduplicated by complaint_id)
   const recentComplaints = complaints.filter((c) => isRecent(c.received_date, referenceDate));
+
+  function countOpenClosed(list: typeof complaints) {
+    const openIds = new Set<string>();
+    const allIds = new Set<string>();
+    for (const c of list) {
+      const id = c.complaint_id;
+      if (!id) continue;
+      allIds.add(id);
+      if (c.complaint_status?.toUpperCase() === "OPEN") openIds.add(id);
+    }
+    return { deduped: allIds.size, open: openIds.size, closed: allIds.size - openIds.size, rows: list.length };
+  }
+
   const complaintCounts = {
-    recent: {
-      deduped: new Set(recentComplaints.map((c) => c.complaint_id)).size,
-      rows: recentComplaints.length,
-    },
-    all_time: {
-      deduped: new Set(complaints.map((c) => c.complaint_id)).size,
-      rows: complaints.length,
-    },
+    recent: countOpenClosed(recentComplaints),
+    all_time: countOpenClosed(complaints),
   };
 
   // Litigation counts

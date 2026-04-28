@@ -95,7 +95,7 @@ export interface PropertyResponse {
   assessment_summary_recent?: { headline: string; details: string; olderNote: string | null; severityLevel: string; recentCount: number; olderCount: number };
   assessment_summary_all?: { headline: string; details: string; olderNote: string | null; severityLevel: string; recentCount: number; olderCount: number };
   violation_counts?: { recent: { total: number; class_c: number; class_b: number; class_a: number; class_i: number; require_action: number; total_open: number }; all_time: { total: number; class_c: number; class_b: number; class_a: number; class_i: number; require_action: number; total_open: number } };
-  complaint_counts?: { recent: { deduped: number; rows: number }; all_time: { deduped: number; rows: number } };
+  complaint_counts?: { recent: { deduped: number; open: number; closed: number; rows: number }; all_time: { deduped: number; open: number; closed: number; rows: number } };
   litigation_counts?: { recent: number; all_time: number };
 }
 
