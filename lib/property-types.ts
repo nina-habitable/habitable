@@ -91,7 +91,6 @@ export interface PropertyResponse {
   nta?: string | null;
   // Derived fields (computed server-side)
   habitable_score?: { type: string; tier?: number; message?: string; percentile?: number; violPerUnit?: number; violationCount?: number; classCCount?: number; complaintCount?: number; peerCount?: number; bucketLabel?: string; accentColor?: string; reason?: string };
-  habitable_score_all_time?: { type: string; tier?: number; message?: string; percentile?: number; violPerUnit?: number; violationCount?: number; classCCount?: number; complaintCount?: number; peerCount?: number; bucketLabel?: string; accentColor?: string; reason?: string };
   assessment_summary_recent?: { headline: string; details: string; olderNote: string | null; severityLevel: string; recentCount: number; olderCount: number };
   assessment_summary_all?: { headline: string; details: string; olderNote: string | null; severityLevel: string; recentCount: number; olderCount: number };
   violation_counts?: { recent: { total: number; class_c: number; class_b: number; class_a: number; class_i: number; require_action: number; total_open: number }; all_time: { total: number; class_c: number; class_b: number; class_a: number; class_i: number; require_action: number; total_open: number } };
