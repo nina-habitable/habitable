@@ -636,9 +636,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
 
   const topCategories = useMemo(() => getTopCategories(mappedViolations), [mappedViolations]);
 
-  const habitableScore = propertyData
-    ? (timeframe === "recent" ? propertyData.habitable_score : propertyData.habitable_score_all_time) ?? null
-    : null;
+  const habitableScore = propertyData?.habitable_score ?? null;
 
   const filteredComplaints = useMemo(() => {
     if (!propertyData) return [];
@@ -813,6 +811,9 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
             {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "clean" && (
               <div className="rounded-xl border border-green-900 bg-green-950 p-4">
                 <p className="text-sm font-semibold text-green-400">{habitableScore.message}</p>
+                {timeframe === "all" && (
+                  <p className="text-[10px] text-[var(--muted-dim)] mt-1">Score reflects last 2 years</p>
+                )}
               </div>
             )}
             {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "score" && (
@@ -824,6 +825,9 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                 <p className="text-xs text-[var(--muted-dim)] mt-1">
                   {habitableScore.violationCount ?? 0} open violation{habitableScore.violationCount === 1 ? "" : "s"} ({habitableScore.violPerUnit ?? 0} per unit) · {habitableScore.complaintCount ?? 0} complaint{habitableScore.complaintCount === 1 ? "" : "s"} · Compared against {(habitableScore.peerCount ?? 0).toLocaleString()} buildings
                 </p>
+                {timeframe === "all" && (
+                  <p className="text-[10px] text-[var(--muted-dim)] mt-1">Score reflects last 2 years</p>
+                )}
                 <div className="flex items-center gap-3 mt-2">
                   <Link href="/methodology" className="text-[10px] text-[var(--muted)] hover:text-[var(--foreground)]">How this works &rarr;</Link>
                 </div>
@@ -833,6 +837,9 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
             {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "no_score" && habitableScore.reason === "missing_data" && (
               <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-4">
                 <p className="text-xs text-[var(--muted)]">Score unavailable — unit count not found in HPD records</p>
+                {timeframe === "all" && (
+                  <p className="text-[10px] text-[var(--muted-dim)] mt-1">Score reflects last 2 years</p>
+                )}
               </div>
             )}
 

@@ -61,9 +61,8 @@ function computeDerivedFields(data: PropertyResponse, referenceDate: Date) {
     all_time: litigations.length,
   };
 
-  // Habitable Score (both timeframes)
+  // Habitable Score (recent only — score panel is timeframe-invariant)
   const habitableScore = calculateHabitableScore(data, "recent");
-  const habitableScoreAllTime = calculateHabitableScore(data, "all");
 
   // Assessment summary (both timeframes)
   const openViolations = violations.filter((v) => isOpenViolation(v.status));
@@ -96,7 +95,6 @@ function computeDerivedFields(data: PropertyResponse, referenceDate: Date) {
 
   return {
     habitable_score: habitableScore,
-    habitable_score_all_time: habitableScoreAllTime,
     assessment_summary_recent: assessmentSummaryRecent,
     assessment_summary_all: assessmentSummaryAll,
     violation_counts: violationCounts,
