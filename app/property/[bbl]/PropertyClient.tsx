@@ -1133,7 +1133,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
             </div>
 
             {/* Violation class breakdown */}
-            {(vCounts?.total ?? 0) > 0 && (
+            {vCounts && (
               <div>
                 <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">Current violations</h3>
                 <div className="grid grid-cols-5 gap-2">
