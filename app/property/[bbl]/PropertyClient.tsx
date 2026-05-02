@@ -6,6 +6,7 @@ import Link from "next/link";
 import AddressAutocomplete from "../../components/AddressAutocomplete";
 import FuzzyMatchBanner from "../../components/FuzzyMatchBanner";
 import { detectFuzzyMatchFromLabel } from "../../../lib/address-matching";
+import PropertySummary from "../../components/PropertySummary";
 import {
   mapViolation,
   CLASS_INFO,
@@ -187,12 +188,12 @@ function ComplaintCard({ complaint }: { complaint: Complaint }) {
         </h3>
         <div className="flex items-center gap-1.5 shrink-0">
           {complaint.complaint_status && (
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${complaint.complaint_status.toUpperCase() === "OPEN" ? "bg-[#3D2E0A] text-[#FFB020]" : "bg-[var(--card-border)] text-[var(--muted)]"}`}>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${complaint.complaint_status.toUpperCase() === "OPEN" ? "bg-[var(--banner-amber-bg)] text-[var(--banner-amber-ink)]" : "bg-[var(--card-border)] text-[var(--muted)]"}`}>
               {titleCase(complaint.complaint_status)}
             </span>
           )}
           {complaint.type && (
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${complaint.type === "EMERGENCY" ? "bg-[#3D1414] text-[#FF4D4D]" : "bg-[var(--card-border)] text-[var(--muted)]"}`}>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${complaint.type === "EMERGENCY" ? "bg-[var(--banner-red-bg)] text-[var(--banner-red-ink)]" : "bg-[var(--card-border)] text-[var(--muted)]"}`}>
               {complaint.type}
             </span>
           )}
@@ -216,7 +217,7 @@ function LitigationCard({ litigation }: { litigation: Litigation }) {
         <h3 className="font-semibold text-[var(--foreground)] text-sm leading-snug">
           {titleCase(litigation.casetype || "Case")}
         </h3>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${isPending ? "bg-[#3D2E0A] text-[#FFB020]" : "bg-[var(--card-border)] text-[var(--muted)]"}`}>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${isPending ? "bg-[var(--banner-amber-bg)] text-[var(--banner-amber-ink)]" : "bg-[var(--card-border)] text-[var(--muted)]"}`}>
           {isPending ? "Pending" : "Closed"}
         </span>
       </div>
@@ -239,7 +240,7 @@ function ServiceRequestCard({ sr }: { sr: ServiceRequest311 }) {
           {sr.complaint_type || "Service Request"}
         </h3>
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${isOpen ? "bg-[#3D2E0A] text-[#FFB020]" : "bg-[var(--card-border)] text-[var(--muted)]"}`}>
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${isOpen ? "bg-[var(--banner-amber-bg)] text-[var(--banner-amber-ink)]" : "bg-[var(--card-border)] text-[var(--muted)]"}`}>
             {isOpen ? "Open" : "Closed"}
           </span>
           <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-[var(--card-border)] text-[var(--muted)]">
@@ -335,6 +336,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
   const [visibleCount, setVisibleCount] = useState(10);
   const [timeframe, setTimeframe] = useState<"recent" | "all">("recent");
   const [activeTab, setActiveTab] = useState<"violations" | "complaints" | "litigation" | "311">("violations");
+  const [pageView, setPageView] = useState<"summary" | "full">("summary");
 
   useEffect(() => {
     async function load() {
@@ -762,83 +764,124 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
   // ─── Render ───────────────────────────────────────
 
   return (
-    <div className="min-h-screen font-[family-name:var(--font-geist-sans)]">
-      <header className="border-b border-[var(--card-border)] bg-[var(--card)]">
+    <div className="min-h-screen font-[family-name:var(--font-ui)]">
+      <header className="border-b border-[var(--hab-line)] bg-[var(--hab-paper)]">
         <div className="mx-auto max-w-2xl px-5 py-4">
           <div className="flex items-center gap-3 mb-3">
-            <h1 className="text-lg font-bold tracking-tight text-[var(--foreground)] cursor-pointer" onClick={() => router.push("/")}>Habitable</h1>
+            <h1 className="text-lg font-[family-name:var(--font-serif)] font-semibold tracking-tight text-[var(--hab-ink)] cursor-pointer" onClick={() => router.push("/")}>Habitable</h1>
           </div>
           <AddressAutocomplete initialAddress={searchedQuery} onSubmit={handleHeaderSubmit} onSelect={handleHeaderSelect} variant="compact" />
-          {searchError && <p className="text-xs text-red-400 mt-2">{searchError}</p>}
+          {searchError && <p className="text-xs mt-2" style={{ color: "var(--signal-red)" }}>{searchError}</p>}
         </div>
       </header>
 
       <main className="mx-auto max-w-2xl px-5 py-6">
         <FuzzyMatchBanner closestMatch={detectFuzzyMatchFromLabel(searchedAddress, addressLabel) ?? undefined} />
-        {loadingProperty && <p className="text-center text-sm text-[var(--muted)] py-12">Loading building data...</p>}
-        {error && <div className="rounded-xl border border-red-900 bg-red-950 px-4 py-3 text-sm text-red-400">{error}</div>}
+        {loadingProperty && <p className="text-center text-sm text-[var(--hab-muted)] py-12">Loading building data...</p>}
+        {error && <div className="rounded-xl border px-4 py-3 text-sm" style={{ borderColor: "var(--banner-red-border)", background: "var(--banner-red-bg)", color: "var(--banner-red-ink)" }}>{error}</div>}
 
         {propertyData?.fetch_errors && propertyData.fetch_errors.length > 0 && (
-          <div className="rounded-xl border border-[#3D2E0A] bg-[#2E2810] px-4 py-3 mb-4 text-sm text-[#FFB020]">
-            Some data sources are temporarily unavailable. Results may be incomplete — try again in a few minutes.
+          <div className="rounded-xl border px-4 py-3 mb-4 text-sm" style={{ borderColor: "var(--banner-amber-border)", background: "var(--banner-amber-bg)", color: "var(--banner-amber-ink)" }}>
+            Some data sources are temporarily unavailable. Results may be incomplete.
           </div>
         )}
 
         {propertyData && (
           <div className="space-y-5">
             {/* Address header + building info */}
-            <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5">
+            <div className="rounded-xl border border-[var(--hab-line)] bg-[var(--hab-paper)] p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold text-[var(--foreground)]">{addressLabel || `Property ${bbl}`}</h2>
-                  <p className="text-sm text-[var(--muted-dim)] font-[family-name:var(--font-geist-mono)]">BBL {bbl}</p>
+                  <h2 className="text-lg font-[family-name:var(--font-serif)] font-semibold text-[var(--hab-ink)]">{addressLabel || `Property ${bbl}`}</h2>
+                  <p className="text-sm text-[var(--hab-ink-2)] font-[family-name:var(--font-mono)]">BBL {bbl}</p>
                   {(buildingDetails || propertyData?.nta || buildingType) && (
-                    <p className="text-xs text-[var(--muted)] mt-1">
+                    <p className="text-xs text-[var(--hab-muted)] mt-1">
                       {[
                         buildingDetails?.legal_class_a ? `${buildingDetails.legal_class_a} units` : null,
                         buildingDetails?.legal_stories ? `${buildingDetails.legal_stories} stories` : null,
                         propertyData?.nta || null,
                         buildingType,
-                      ].filter(Boolean).join(" · ")}
+                      ].filter(Boolean).join(" \u00B7 ")}
                     </p>
                   )}
                 </div>
-                <Link href={`/compare?bbls=${bbl}`} className="shrink-0 rounded-lg border border-[var(--card-border)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--muted)] transition-colors">+ Compare</Link>
+                <Link href={`/compare?bbls=${bbl}`} className="shrink-0 rounded-lg border border-[var(--hab-line)] px-3 py-1.5 text-xs text-[var(--hab-muted)] hover:text-[var(--hab-ink)] hover:border-[var(--hab-muted)] transition-colors">+ Compare</Link>
               </div>
             </div>
 
+            {/* Tab bar — Summary / Full Report */}
+            <div className="flex items-center gap-0 border-b border-[var(--hab-line)]">
+              <button
+                onClick={() => setPageView("summary")}
+                className={`px-4 py-2.5 text-left transition-colors ${pageView === "summary" ? "border-b-2 border-[var(--hab-ink)] text-[var(--hab-ink)]" : "border-b-2 border-transparent text-[var(--hab-muted)]"}`}
+              >
+                <span className="text-sm font-semibold block">Summary</span>
+                <span className="text-[10.5px] uppercase tracking-[0.06em] text-[var(--hab-muted)]">90-second read</span>
+              </button>
+              <button
+                onClick={() => setPageView("full")}
+                className={`px-4 py-2.5 text-left transition-colors ${pageView === "full" ? "border-b-2 border-[var(--hab-ink)] text-[var(--hab-ink)]" : "border-b-2 border-transparent text-[var(--hab-muted)]"}`}
+              >
+                <span className="text-sm font-semibold block">Full Report</span>
+                <span className="text-[10.5px] uppercase tracking-[0.06em] text-[var(--hab-muted)]">Every data point</span>
+              </button>
+            </div>
+
+            {/* Summary tab */}
+            {pageView === "summary" && (
+              <PropertySummary
+                propertyData={propertyData}
+                addressLabel={addressLabel}
+                bbl={bbl}
+                neighbourhood={propertyData.nta || geoHood}
+                buildingType={buildingType}
+                landlordQuestions={landlordQuestions}
+                deeds={deeds}
+                linkedProperties={linkedProperties}
+                contacts={contacts}
+              />
+            )}
+
+            {/* Full Report tab */}
+            {pageView === "full" && <>
+
             {/* Habitable Score — hidden for AEP buildings */}
             {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "clean" && (
-              <div className="rounded-xl border border-green-900 bg-green-950 p-4">
-                <p className="text-sm font-semibold text-green-400">{habitableScore.message}</p>
+              <div className="rounded-xl border p-4" style={{ borderColor: "var(--signal-green)", background: "oklch(0.96 0.03 155)" }}>
+                <p className="text-sm font-semibold" style={{ color: "var(--signal-green)" }}>{habitableScore.message}</p>
                 {timeframe === "all" && (
-                  <p className="text-[10px] text-[var(--muted-dim)] mt-1">Score reflects last 2 years</p>
+                  <p className="text-[10px] text-[var(--hab-muted)] mt-1">Score reflects last 2 years</p>
                 )}
               </div>
             )}
             {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "score" && (
-              <div className={`rounded-xl border p-4 ${habitableScore.accentColor === "green" ? "border-green-900 bg-green-950" : habitableScore.accentColor === "amber" ? "border-[#3D2E0A] bg-[#2E2810]" : "border-[#3D1414] bg-[#2E1010]"}`}>
-                <p className={`text-lg font-bold ${habitableScore.accentColor === "green" ? "text-green-400" : habitableScore.accentColor === "amber" ? "text-[#FFB020]" : "text-[#FF4D4D]"}`}>
+              <div className="rounded-xl border p-4" style={{
+                borderColor: habitableScore.accentColor === "green" ? "var(--signal-green)" : habitableScore.accentColor === "amber" ? "var(--banner-amber-border)" : "var(--banner-red-border)",
+                background: habitableScore.accentColor === "green" ? "oklch(0.96 0.03 155)" : habitableScore.accentColor === "amber" ? "var(--banner-amber-bg)" : "var(--banner-red-bg)",
+              }}>
+                <p className="text-lg font-bold" style={{
+                  color: habitableScore.accentColor === "green" ? "var(--signal-green)" : habitableScore.accentColor === "amber" ? "var(--signal-amber)" : "var(--signal-red)",
+                }}>
                   Better than {habitableScore.percentile}% of NYC buildings with {habitableScore.bucketLabel} units
                 </p>
-                <p className="text-[10px] text-[var(--muted-dim)] mt-0.5">Habitable Score</p>
-                <p className="text-xs text-[var(--muted-dim)] mt-1">
-                  {habitableScore.violationCount ?? 0} open violation{habitableScore.violationCount === 1 ? "" : "s"} ({habitableScore.violPerUnit ?? 0} per unit) · {habitableScore.complaintCount ?? 0} complaint{habitableScore.complaintCount === 1 ? "" : "s"} · Compared against {(habitableScore.peerCount ?? 0).toLocaleString()} buildings
+                <p className="text-[10px] text-[var(--hab-muted)] mt-0.5">Habitable Score</p>
+                <p className="text-xs text-[var(--hab-ink-2)] mt-1">
+                  {habitableScore.violationCount ?? 0} open violation{habitableScore.violationCount === 1 ? "" : "s"} ({habitableScore.violPerUnit ?? 0} per unit) {"\u00B7"} {habitableScore.complaintCount ?? 0} complaint{habitableScore.complaintCount === 1 ? "" : "s"} {"\u00B7"} Compared against {(habitableScore.peerCount ?? 0).toLocaleString()} buildings
                 </p>
                 {timeframe === "all" && (
-                  <p className="text-[10px] text-[var(--muted-dim)] mt-1">Score reflects last 2 years</p>
+                  <p className="text-[10px] text-[var(--hab-muted)] mt-1">Score reflects last 2 years</p>
                 )}
                 <div className="flex items-center gap-3 mt-2">
-                  <Link href="/methodology" className="text-[10px] text-[var(--muted)] hover:text-[var(--foreground)]">How this works &rarr;</Link>
+                  <Link href="/methodology" className="text-[10px] text-[var(--hab-muted)] hover:text-[var(--hab-ink)]">How this works &rarr;</Link>
                 </div>
-                <p className="text-[10px] text-[var(--muted-dim)] mt-1">Based on NYC public records. Informational only: verify details before making decisions.</p>
+                <p className="text-[10px] text-[var(--hab-muted)] mt-1">Based on NYC public records. Informational only: verify details before making decisions.</p>
               </div>
             )}
             {SHOW_HABITABLE_SCORE && habitableScore && habitableScore.type === "no_score" && habitableScore.reason === "missing_data" && (
-              <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-4">
-                <p className="text-xs text-[var(--muted)]">Score unavailable — unit count not found in HPD records</p>
+              <div className="rounded-xl border border-[var(--hab-line)] bg-[var(--hab-paper)] p-4">
+                <p className="text-xs text-[var(--hab-muted)]">Score unavailable — unit count not found in HPD records</p>
                 {timeframe === "all" && (
-                  <p className="text-[10px] text-[var(--muted-dim)] mt-1">Score reflects last 2 years</p>
+                  <p className="text-[10px] text-[var(--hab-muted)] mt-1">Score reflects last 2 years</p>
                 )}
               </div>
             )}
@@ -850,17 +893,17 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
               return (
                 <>
                   {activeVacate.length > 0 && (
-                    <div className="rounded-xl border-2 border-red-700 bg-red-950 p-5">
-                      <p className="text-base font-bold text-red-400 mb-1">Active Vacate Order</p>
-                      <p className="text-sm text-red-300">HPD has declared conditions in this building uninhabitable. Reason: {activeVacate[0].reason ?? "Not specified"}</p>
+                    <div className="rounded-xl border-2 p-5" style={{ borderColor: "var(--banner-red-border)", background: "var(--banner-red-bg)" }}>
+                      <p className="text-base font-bold mb-1" style={{ color: "var(--banner-red-ink)" }}>Active Vacate Order</p>
+                      <p className="text-sm" style={{ color: "var(--banner-red-ink)" }}>HPD has declared conditions in this building uninhabitable. Reason: {activeVacate[0].reason ?? "Not specified"}</p>
                       {activeVacate[0].effective_date && (
-                        <p className="text-xs text-red-400/70 mt-1">Effective {formatDate(activeVacate[0].effective_date)} · {activeVacate[0].units_vacated ?? "?"} units vacated</p>
+                        <p className="text-xs mt-1" style={{ color: "var(--banner-red-ink)", opacity: 0.7 }}>Effective {formatDate(activeVacate[0].effective_date)} {"\u00B7"} {activeVacate[0].units_vacated ?? "?"} units vacated</p>
                       )}
                     </div>
                   )}
                   {activeVacate.length === 0 && rescindedVacate.length > 0 && (
-                    <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-3">
-                      <p className="text-sm text-[var(--muted)]">
+                    <div className="rounded-xl border border-[var(--hab-line)] bg-[var(--hab-paper)] px-5 py-3">
+                      <p className="text-sm text-[var(--hab-muted)]">
                         A vacate order was previously issued for this building (reason: {rescindedVacate[0].reason ?? "not specified"}, issued {formatDate(rescindedVacate[0].effective_date)}, rescinded {formatDate(rescindedVacate[0].rescind_date)}).
                       </p>
                     </div>
@@ -878,25 +921,25 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
               const sortedAep = [...aep].sort((a, b) => (b.aep_start_date ?? "").localeCompare(a.aep_start_date ?? ""));
 
               return active.length > 0 ? (
-                <div className="rounded-xl border-2 border-[#7C2D12] bg-[#431407] p-5">
-                  <p className="text-base font-bold text-orange-400 mb-1">HPD Watchlist Building</p>
-                  <p className="text-sm text-orange-300">This building is on HPD&apos;s Alternative Enforcement Program, a watchlist for buildings with the most severe and persistent housing code violations. HPD has placed this building under enhanced enforcement and monitoring.</p>
-                  {aep.length > 1 && <p className="text-xs text-orange-400/70 mt-1">This building has been placed on HPD&apos;s watchlist {aep.length} times.</p>}
+                <div className="rounded-xl border-2 p-5" style={{ borderColor: "var(--banner-amber-border)", background: "var(--banner-amber-bg)" }}>
+                  <p className="text-base font-bold mb-1" style={{ color: "var(--banner-amber-ink)" }}>HPD Watchlist Building</p>
+                  <p className="text-sm" style={{ color: "var(--banner-amber-ink)" }}>This building is on HPD&apos;s Alternative Enforcement Program, a watchlist for buildings with the most severe and persistent housing code violations. HPD has placed this building under enhanced enforcement and monitoring.</p>
+                  {aep.length > 1 && <p className="text-xs mt-1" style={{ color: "var(--banner-amber-ink)", opacity: 0.7 }}>This building has been placed on HPD&apos;s watchlist {aep.length} times.</p>}
                   <div className="mt-3 space-y-1">
                     {sortedAep.map((a) => (
-                      <div key={a.id} className="flex items-center gap-2 text-xs text-orange-300/80">
-                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${a.current_status === "AEP Active" ? "bg-orange-400" : "bg-[var(--muted-dim)]"}`} />
+                      <div key={a.id} className="flex items-center gap-2 text-xs" style={{ color: "var(--banner-amber-ink)", opacity: 0.8 }}>
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: a.current_status === "AEP Active" ? "var(--signal-amber)" : "var(--hab-muted)" }} />
                         <span>{a.aep_round}</span>
-                        <span className="text-orange-400/50">·</span>
-                        <span>{formatDate(a.aep_start_date)}{a.discharge_date ? ` — ${formatDate(a.discharge_date)}` : " — present"}</span>
-                        {a.violations_at_start && <span className="text-orange-400/50">· {a.violations_at_start} violations at start</span>}
+                        <span style={{ opacity: 0.5 }}>{"\u00B7"}</span>
+                        <span>{formatDate(a.aep_start_date)}{a.discharge_date ? ` \u2014 ${formatDate(a.discharge_date)}` : " \u2014 present"}</span>
+                        {a.violations_at_start && <span style={{ opacity: 0.5 }}>{"\u00B7"} {a.violations_at_start} violations at start</span>}
                       </div>
                     ))}
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] px-5 py-3">
-                  <p className="text-sm text-[var(--muted)]">
+                <div className="rounded-xl border border-[var(--hab-line)] bg-[var(--hab-paper)] px-5 py-3">
+                  <p className="text-sm text-[var(--hab-muted)]">
                     This building was previously on HPD&apos;s worst-offender watchlist
                     {discharged.length > 0 && ` (discharged ${formatDate(discharged.sort((a, b) => (b.discharge_date ?? "").localeCompare(a.discharge_date ?? ""))[0].discharge_date)})`}.
                     {aep.length > 1 && ` Placed on the watchlist ${aep.length} times.`}
@@ -907,12 +950,12 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
 
             {/* Plain-English summary — prominent */}
             {summary && (
-              <div className="rounded-xl border-2 bg-[var(--card)] p-6" style={{
-                borderColor: summary.severityLevel === "severe" || summary.severityLevel === "serious" ? "#5C1B1B" : summary.severityLevel === "clean" ? "#1B3D1B" : "var(--card-border)",
+              <div className="rounded-xl border-2 bg-[var(--hab-paper)] p-6" style={{
+                borderColor: summary.severityLevel === "severe" || summary.severityLevel === "serious" ? "var(--banner-red-border)" : summary.severityLevel === "clean" ? "var(--signal-green)" : "var(--hab-line)",
               }}>
-                <h3 className="text-base font-bold text-[var(--foreground)] mb-2">Building Assessment</h3>
-                <p className="font-semibold text-[var(--foreground)] text-sm leading-relaxed mb-2">{summary.headline}</p>
-                <p className="text-sm text-[var(--muted)] leading-relaxed">{summary.details}</p>
+                <h3 className="text-base font-[family-name:var(--font-serif)] font-bold text-[var(--hab-ink)] mb-2">Building Assessment</h3>
+                <p className="font-semibold text-[var(--hab-ink)] text-sm leading-relaxed mb-2">{summary.headline}</p>
+                <p className="text-sm text-[var(--hab-ink-2)] leading-relaxed">{summary.details}</p>
                 {topCategories.length > 0 && (
                   <p className="text-xs text-[var(--muted)] leading-relaxed mt-3">
                     Most common {timeframe === "recent" ? "recent " : ""}issues: {topCategories.map((c) => `${c.count} ${c.title.toLowerCase()}`).join(", ")}.
@@ -1002,7 +1045,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                       {portfolio.slice(0, 10).map((b) => (
                         <div key={b.bbl} className="flex items-center justify-between">
                           <Link href={`/property/${b.bbl}`} className="text-xs text-[var(--foreground)] hover:underline truncate">{b.address}</Link>
-                          <span className="text-[10px] text-[var(--muted-dim)] ml-2 shrink-0 font-[family-name:var(--font-geist-mono)]">{b.bbl}</span>
+                          <span className="text-[10px] text-[var(--muted-dim)] ml-2 shrink-0 font-[family-name:var(--font-mono)]">{b.bbl}</span>
                         </div>
                       ))}
                       {portfolio.length > 10 && <p className="text-[10px] text-[var(--muted-dim)]">...and {portfolio.length - 10} more</p>}
@@ -1022,9 +1065,9 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                         <Link href={`/property/${lp.bbl}`} className="text-xs text-[var(--foreground)] hover:underline truncate">
                           {lp.address}
                           {lp.date && <span className="text-[var(--muted-dim)]"> · {formatDate(lp.date)}</span>}
-                          {lp.confirmed && <span className="text-[10px] text-green-500 ml-1">✓</span>}
+                          {lp.confirmed && <span className="text-[10px] ml-1" style={{ color: "var(--signal-green)" }}>&#x2713;</span>}
                         </Link>
-                        <span className="text-[10px] text-[var(--muted-dim)] ml-2 shrink-0 font-[family-name:var(--font-geist-mono)]">{lp.bbl}</span>
+                        <span className="text-[10px] text-[var(--muted-dim)] ml-2 shrink-0 font-[family-name:var(--font-mono)]">{lp.bbl}</span>
                       </div>
                     ))}
                   </div>
@@ -1084,9 +1127,9 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
             </CollapsibleSection>
 
             {/* Timeframe toggle */}
-            <div className="flex items-center gap-1 bg-[var(--card)] rounded-lg p-1 border border-[var(--card-border)] w-fit">
-              <button onClick={() => { setTimeframe("recent"); setVisibleCount(10); }} className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${timeframe === "recent" ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}>Last 2 years</button>
-              <button onClick={() => { setTimeframe("all"); setVisibleCount(10); }} className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${timeframe === "all" ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}>All time</button>
+            <div className="flex items-center gap-1 bg-[var(--hab-paper)] rounded-lg p-1 border border-[var(--hab-line)] w-fit">
+              <button onClick={() => { setTimeframe("recent"); setVisibleCount(10); }} className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${timeframe === "recent" ? "bg-[var(--hab-ink)] text-[var(--hab-paper)]" : "text-[var(--hab-muted)] hover:text-[var(--hab-ink)]"}`}>Last 2 years</button>
+              <button onClick={() => { setTimeframe("all"); setVisibleCount(10); }} className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${timeframe === "all" ? "bg-[var(--hab-ink)] text-[var(--hab-paper)]" : "text-[var(--hab-muted)] hover:text-[var(--hab-ink)]"}`}>All time</button>
             </div>
 
             {/* Violation class breakdown */}
@@ -1094,17 +1137,17 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
               <div>
                 <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">Current violations</h3>
                 <div className="grid grid-cols-5 gap-2">
-                  <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-3 text-center">
-                    <p className="text-xl font-bold text-[#FF4D4D]">{actionRequiredCount}</p>
-                    <p className="text-[10px] text-[var(--muted-dim)] mt-0.5">Require action</p>
-                    <p className="text-[10px] text-[var(--muted-dim)]">{vCounts?.total_open ?? 0} total open</p>
+                  <div className="rounded-xl border border-[var(--hab-line)] bg-[var(--hab-paper)] p-3 text-center">
+                    <p className="text-xl font-bold" style={{ color: "var(--sev-c)" }}>{actionRequiredCount}</p>
+                    <p className="text-[10px] text-[var(--hab-muted)] mt-0.5">Require action</p>
+                    <p className="text-[10px] text-[var(--hab-muted)]">{vCounts?.total_open ?? 0} total open</p>
                   </div>
                   {(["C", "B", "A", "I"] as const).map((cls) => {
-                    const info = CLASS_INFO[cls];
+                    const sevColor = cls === "C" ? "var(--sev-c)" : cls === "B" ? "var(--sev-b)" : cls === "A" ? "var(--sev-a)" : "var(--sev-i)";
                     return (
-                      <div key={cls} className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-3 text-center">
-                        <p className="text-xl font-bold" style={{ color: info.color }}>{classCount(cls)}</p>
-                        <p className="text-[10px] mt-0.5" style={{ color: info.color }}>Class {cls}</p>
+                      <div key={cls} className="rounded-xl border border-[var(--hab-line)] bg-[var(--hab-paper)] p-3 text-center">
+                        <p className="text-xl font-bold" style={{ color: sevColor }}>{classCount(cls)}</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: sevColor }}>Class {cls}</p>
                       </div>
                     );
                   })}
@@ -1126,7 +1169,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                   <p className="text-lg font-bold text-[var(--foreground)]">{filteredComplaintCount}</p>
                   {filteredComplaintCount > 0 && (
                     <p className="text-[10px] text-[var(--muted-dim)]">
-                      {openComplaintCount > 0 && <span className="text-[#FFB020]">{openComplaintCount} open</span>}
+                      {openComplaintCount > 0 && <span className="text-[var(--signal-amber)]">{openComplaintCount} open</span>}
                       {openComplaintCount > 0 && closedComplaintCount > 0 && " · "}
                       {closedComplaintCount > 0 && <span>{closedComplaintCount} closed</span>}
                     </p>
@@ -1142,7 +1185,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                   <p className="text-lg font-bold text-[var(--foreground)]">{lCounts}</p>
                   {lCounts > 0 && (
                     <p className="text-[10px] text-[var(--muted-dim)]">
-                      {pendingLitigation > 0 && <span className="text-[#FFB020]">{pendingLitigation} pending</span>}
+                      {pendingLitigation > 0 && <span className="text-[var(--signal-amber)]">{pendingLitigation} pending</span>}
                       {pendingLitigation > 0 && (lCounts - pendingLitigation) > 0 && " · "}
                       {(lCounts - pendingLitigation) > 0 && <span>{lCounts - pendingLitigation} closed</span>}
                     </p>
@@ -1175,7 +1218,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                   <div>
                     <h4 className="text-xs font-semibold text-[var(--foreground)] mb-2">Bed Bug History</h4>
                     {hasActive ? (
-                      <div className="rounded-lg border border-[#3D2E0A] bg-[#2E2810] px-3 py-2 mb-2"><p className="text-sm text-[#FFB020]">Bed bugs have been reported in this building.</p></div>
+                      <div className="rounded-lg border px-3 py-2 mb-2" style={{ borderColor: "var(--banner-amber-border)", background: "var(--banner-amber-bg)" }}><p className="text-sm" style={{ color: "var(--banner-amber-ink)" }}>Bed bugs have been reported in this building.</p></div>
                     ) : totalInfested === 0 ? (
                       <p className="text-xs text-[var(--muted)] mb-2">No active infestations.{totalEradicated > 0 && ` ${totalEradicated} unit${totalEradicated === 1 ? "" : "s"} previously treated.`}</p>
                     ) : null}
@@ -1246,9 +1289,9 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
               summary="View all individual records"
             >
             <div>
-              <div className="flex items-center gap-1 bg-[var(--card)] rounded-lg p-1 border border-[var(--card-border)] w-fit mb-4 flex-wrap">
+              <div className="flex items-center gap-1 bg-[var(--hab-paper)] rounded-lg p-1 border border-[var(--hab-line)] w-fit mb-4 flex-wrap">
                 {(["violations", "complaints", "litigation", "311"] as const).map((tab) => (
-                  <button key={tab} onClick={() => setActiveTab(tab)} className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${activeTab === tab ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}>
+                  <button key={tab} onClick={() => setActiveTab(tab)} className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${activeTab === tab ? "bg-[var(--hab-ink)] text-[var(--hab-paper)]" : "text-[var(--hab-muted)] hover:text-[var(--hab-ink)]"}`}>
                     {tab === "violations" ? `Violations (${filteredViolations.length})` : tab === "complaints" ? `Complaints (${filteredComplaintCount})` : tab === "litigation" ? `Litigation (${filteredLitigations.length})` : `311 Reports (${filtered311.length})`}
                   </button>
                 ))}
@@ -1280,9 +1323,9 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
 
                     if (noData && isCondo) {
                       return (
-                        <div className="rounded-xl border border-[#3D2E0A] bg-[#2E2810] p-5 text-center">
-                          <p className="text-sm font-medium text-[#FFB020]">Condo / co-op unit detected</p>
-                          <p className="text-xs text-[#FFB020]/70 mt-1">This appears to be a condo or co-op unit. HPD tracks building violations under the master building address, not individual units. Try searching the main building address instead for a complete violation history.</p>
+                        <div className="rounded-xl border p-5 text-center" style={{ borderColor: "var(--banner-amber-border)", background: "var(--banner-amber-bg)" }}>
+                          <p className="text-sm font-medium" style={{ color: "var(--banner-amber-ink)" }}>Condo / co-op unit detected</p>
+                          <p className="text-xs mt-1" style={{ color: "var(--banner-amber-ink)", opacity: 0.7 }}>This appears to be a condo or co-op unit. HPD tracks building violations under the master building address, not individual units. Try searching the main building address instead for a complete violation history.</p>
                         </div>
                       );
                     }
@@ -1295,9 +1338,9 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                       );
                     }
                     return (
-                      <div className="rounded-xl border border-green-900 bg-green-950 p-5 text-center">
-                        <p className="text-sm font-medium text-green-400">No open violations found</p>
-                        <p className="text-xs text-green-500/70 mt-1">{timeframe === "recent" ? 'No violations in the last 2 years. Try "All time" to see older records.' : "This building has no unresolved HPD violations on record."}</p>
+                      <div className="rounded-xl border p-5 text-center" style={{ borderColor: "var(--signal-green)", background: "oklch(0.96 0.03 155)" }}>
+                        <p className="text-sm font-medium" style={{ color: "var(--signal-green)" }}>No open violations found</p>
+                        <p className="text-xs mt-1" style={{ color: "var(--signal-green)", opacity: 0.7 }}>{timeframe === "recent" ? 'No violations in the last 2 years. Try "All time" to see older records.' : "This building has no unresolved HPD violations on record."}</p>
                       </div>
                     );
                   })()
@@ -1351,6 +1394,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                 </a>
               </p>
             </div>
+            </>}
           </div>
         )}
       </main>

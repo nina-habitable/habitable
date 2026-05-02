@@ -30,7 +30,6 @@ export default function AddressAutocomplete({ initialAddress = "", onSubmit, onS
   const abortRef = useRef<AbortController | null>(null);
   const userTypedRef = useRef(false);
 
-  // Click outside or Escape to close
   useEffect(() => {
     function onClick(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -48,9 +47,7 @@ export default function AddressAutocomplete({ initialAddress = "", onSubmit, onS
     };
   }, []);
 
-  // Debounced autocomplete fetch
   useEffect(() => {
-    // Only fetch when the user has actually typed (not on mount or after selection)
     if (!userTypedRef.current) return;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -90,7 +87,6 @@ export default function AddressAutocomplete({ initialAddress = "", onSubmit, onS
           })
           .filter((s: Suggestion) => s.bbl);
 
-        // Extract street prefix from input (after house number) for prioritization
         const streetPrefix = currentInput.trim().toUpperCase().replace(/^\d+[-\d]*\s*/, "").trim();
         const stripHouse = (n: string) => n.toUpperCase().replace(/^\d+[-\d]*\s*/, "").trim();
 
@@ -104,7 +100,6 @@ export default function AddressAutocomplete({ initialAddress = "", onSubmit, onS
           parsed.sort((a: Suggestion, b: Suggestion) => {
             const sa = score(a), sb = score(b);
             if (sa !== sb) return sa - sb;
-            // Within same group: shorter street name first (better match), then alphabetical
             const aStreet = stripHouse(a.name);
             const bStreet = stripHouse(b.name);
             if (aStreet.length !== bStreet.length) return aStreet.length - bStreet.length;
@@ -148,11 +143,11 @@ export default function AddressAutocomplete({ initialAddress = "", onSubmit, onS
 
   const isHero = variant === "hero";
   const inputClasses = isHero
-    ? "flex-1 rounded-lg border border-[var(--card-border)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-dim)] outline-none focus:border-[var(--muted)] focus:ring-1 focus:ring-[var(--muted)]"
-    : "flex-1 rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-4 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-dim)] outline-none focus:border-[var(--muted)] focus:ring-1 focus:ring-[var(--muted)]";
+    ? "flex-1 rounded-lg border border-[var(--hab-line)] bg-[var(--hab-paper)] px-4 py-3 text-sm text-[var(--hab-ink)] placeholder:text-[var(--hab-muted)] outline-none focus:border-[var(--hab-muted)] focus:ring-1 focus:ring-[var(--hab-muted)]"
+    : "flex-1 rounded-lg border border-[var(--hab-line)] bg-[var(--hab-bg)] px-4 py-2 text-sm text-[var(--hab-ink)] placeholder:text-[var(--hab-muted)] outline-none focus:border-[var(--hab-muted)] focus:ring-1 focus:ring-[var(--hab-muted)]";
   const buttonClasses = isHero
-    ? "rounded-lg bg-[var(--foreground)] px-5 py-3 text-sm font-medium text-[var(--background)] hover:opacity-90"
-    : "rounded-lg bg-[var(--foreground)] px-4 py-2 text-sm font-medium text-[var(--background)] hover:opacity-90";
+    ? "rounded-lg bg-[var(--hab-ink)] px-5 py-3 text-sm font-medium text-[var(--hab-paper)] hover:opacity-90"
+    : "rounded-lg bg-[var(--hab-ink)] px-4 py-2 text-sm font-medium text-[var(--hab-paper)] hover:opacity-90";
 
   return (
     <div ref={containerRef} className="relative">
@@ -162,7 +157,6 @@ export default function AddressAutocomplete({ initialAddress = "", onSubmit, onS
           value={address}
           onChange={(e) => {
             userTypedRef.current = true;
-            // Immediately clear stale results so they don't flash while debouncing
             if (abortRef.current) abortRef.current.abort();
             setSuggestions([]);
             setHighlightIndex(-1);
@@ -191,18 +185,18 @@ export default function AddressAutocomplete({ initialAddress = "", onSubmit, onS
       </form>
 
       {showDropdown && suggestions.length > 0 && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-[var(--card-border)] bg-[var(--card)] shadow-lg overflow-hidden">
-          {loading && <div className="px-4 py-2 text-xs text-[var(--muted-dim)]">Loading...</div>}
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-[var(--hab-line)] bg-[var(--hab-paper)] shadow-lg overflow-hidden">
+          {loading && <div className="px-4 py-2 text-xs text-[var(--hab-muted)]">Loading...</div>}
           {suggestions.map((s, i) => (
             <button
               key={s.bbl}
               type="button"
               onClick={() => handleSelect(s)}
               onMouseEnter={() => setHighlightIndex(i)}
-              className={`w-full text-left px-4 py-2.5 border-b border-[var(--card-border)] last:border-b-0 transition-colors ${i === highlightIndex ? "bg-[var(--background)]" : "hover:bg-[var(--background)]"}`}
+              className={`w-full text-left px-4 py-2.5 border-b border-[var(--hab-line)] last:border-b-0 transition-colors ${i === highlightIndex ? "bg-[var(--hab-surface)]" : "hover:bg-[var(--hab-surface)]"}`}
             >
-              <p className="text-sm text-[var(--foreground)]">{s.name}</p>
-              <p className="text-[10px] text-[var(--muted-dim)]">
+              <p className="text-sm text-[var(--hab-ink)]">{s.name}</p>
+              <p className="text-[10px] text-[var(--hab-muted)]">
                 {s.borough}{s.neighbourhood ? `, ${s.neighbourhood}` : ""}
               </p>
             </button>

@@ -3,16 +3,48 @@
 @tailwind utilities;
 
 :root {
-  --background: #0C0C0C;
-  --foreground: #E8E8E3;
-  --card: #161616;
-  --card-border: #2A2A28;
-  --muted: #7A7A75;
-  --muted-dim: #555550;
+  /* Core palette — light */
+  --hab-ink: oklch(0.20 0.015 255);
+  --hab-ink-2: oklch(0.38 0.015 255);
+  --hab-muted: oklch(0.62 0.008 255);
+  --hab-line: oklch(0.88 0.006 85);
+  --hab-surface: oklch(0.97 0.007 85);
+  --hab-paper: oklch(0.995 0.003 85);
+  --hab-bg: oklch(0.97 0.008 85);
+
+  /* Severity — NO green for violations */
+  --sev-c: oklch(0.60 0.18 25);
+  --sev-c-soft: oklch(0.94 0.05 25);
+  --sev-b: oklch(0.72 0.15 65);
+  --sev-b-soft: oklch(0.94 0.06 75);
+  --sev-a: oklch(0.60 0.13 240);
+  --sev-a-soft: oklch(0.94 0.04 240);
+  --sev-i: oklch(0.60 0.01 255);
+
+  /* Banners */
+  --banner-red-bg: oklch(0.96 0.03 25);
+  --banner-red-border: oklch(0.70 0.14 25);
+  --banner-red-ink: oklch(0.38 0.14 25);
+  --banner-amber-bg: oklch(0.96 0.05 75);
+  --banner-amber-border: oklch(0.75 0.14 65);
+  --banner-amber-ink: oklch(0.42 0.12 65);
+
+  /* Verdict signals */
+  --signal-red: oklch(0.60 0.18 25);
+  --signal-amber: oklch(0.72 0.15 65);
+  --signal-green: oklch(0.55 0.15 155);
+
+  /* Legacy aliases — used by existing components during migration */
+  --background: var(--hab-bg);
+  --foreground: var(--hab-ink);
+  --card: var(--hab-paper);
+  --card-border: var(--hab-line);
+  --muted: var(--hab-muted);
+  --muted-dim: var(--hab-ink-2);
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--hab-ink);
+  background: var(--hab-bg);
+  font-family: var(--font-ui), system-ui, -apple-system, sans-serif;
 }

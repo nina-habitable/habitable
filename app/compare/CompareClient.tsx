@@ -6,7 +6,6 @@ import Link from "next/link";
 import AddressAutocomplete from "../components/AddressAutocomplete";
 import FuzzyMatchBanner from "../components/FuzzyMatchBanner";
 import { detectFuzzyMatchFromLabel } from "../../lib/address-matching";
-import { CLASS_INFO } from "../../lib/violation-mappings";
 import type { PropertyResponse } from "../../lib/property-types";
 import { SHOW_HABITABLE_SCORE } from "../../lib/habitable-score";
 import { isOpenViolation, isRecent, TWO_YEARS_MS } from "../../lib/violation-filters";
@@ -16,11 +15,11 @@ import { isOpenViolation, isRecent, TWO_YEARS_MS } from "../../lib/violation-fil
 const twoYearsAgo = new Date(Date.now() - TWO_YEARS_MS);
 
 const SEVERITY_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  clean: { bg: "#1B3D1B", text: "#4ADE80", label: "Clean" },
-  minor: { bg: "#2E2810", text: "#D4A843", label: "Minor" },
-  moderate: { bg: "#3D2E0A", text: "#FFB020", label: "Moderate" },
-  serious: { bg: "#3D1414", text: "#FF4D4D", label: "Serious" },
-  severe: { bg: "#5C1B1B", text: "#FF4D4D", label: "Severe" },
+  clean: { bg: "oklch(0.96 0.03 155)", text: "var(--signal-green)", label: "Clean" },
+  minor: { bg: "var(--banner-amber-bg)", text: "var(--signal-amber)", label: "Minor" },
+  moderate: { bg: "var(--banner-amber-bg)", text: "var(--signal-amber)", label: "Moderate" },
+  serious: { bg: "var(--banner-red-bg)", text: "var(--signal-red)", label: "Serious" },
+  severe: { bg: "var(--banner-red-bg)", text: "var(--signal-red)", label: "Severe" },
 };
 
 // ─── Types ──────────────────────────────────────────
@@ -86,8 +85,8 @@ function BuildingSearch({
         onSelect={(s) => fetchAndAdd(s.bbl, s.label || s.name, s.name)}
         variant="compact"
       />
-      {adding && <p className="text-xs text-[var(--muted-dim)] mt-1">Adding...</p>}
-      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+      {adding && <p className="text-xs text-[var(--hab-ink-2)] mt-1">Adding...</p>}
+      {error && <p className="text-xs mt-1" style={{ color: "var(--signal-red)" }}>{error}</p>}
     </div>
   );
 }
@@ -103,8 +102,6 @@ function BuildingCard({
 }) {
   const { bbl, addressLabel, searchQuery, propertyData } = building;
 
-
-  // Read pre-computed fields from API response
   const vCounts = propertyData.violation_counts?.recent;
   const classC = vCounts?.class_c ?? 0;
   const classB = vCounts?.class_b ?? 0;
@@ -123,62 +120,61 @@ function BuildingCard({
   const severity = SEVERITY_COLORS[summary?.severityLevel ?? "moderate"] ?? SEVERITY_COLORS.moderate;
 
   return (
-    <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-5 flex flex-col">
-      {/* Fuzzy match banner */}
+    <div className="rounded-xl border border-[var(--hab-line)] bg-[var(--hab-paper)] p-5 flex flex-col">
       <FuzzyMatchBanner closestMatch={detectFuzzyMatchFromLabel(building.searchQuery || "", building.addressLabel) ?? undefined} />
-      {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="min-w-0">
-          <h3 className="font-semibold text-[var(--foreground)] text-sm leading-snug truncate">
+          <h3 className="font-semibold text-[var(--hab-ink)] text-sm leading-snug truncate">
             {addressLabel}
           </h3>
-          <p className="text-[10px] text-[var(--muted-dim)] font-[family-name:var(--font-geist-mono)]">
+          <p className="text-[10px] text-[var(--hab-ink-2)] font-[family-name:var(--font-mono)]">
             BBL {bbl}
           </p>
           {(propertyData.building_details || propertyData.nta) && (
-            <p className="text-[10px] text-[var(--muted)] mt-0.5">
+            <p className="text-[10px] text-[var(--hab-muted)] mt-0.5">
               {[
                 propertyData.building_details?.legal_class_a ? `${propertyData.building_details.legal_class_a} units` : null,
                 propertyData.building_details?.legal_stories ? `${propertyData.building_details.legal_stories} stories` : null,
                 propertyData.nta || null,
-              ].filter(Boolean).join(" · ")}
+              ].filter(Boolean).join(" \u00B7 ")}
             </p>
           )}
         </div>
         <button
           onClick={onRemove}
-          className="text-[var(--muted-dim)] hover:text-[var(--foreground)] text-xs shrink-0"
+          className="text-[var(--hab-muted)] hover:text-[var(--hab-ink)] text-xs shrink-0"
         >
           Remove
         </button>
       </div>
 
-      {/* Severity badge or score */}
       <div className="mb-4 space-y-1">
         {SHOW_HABITABLE_SCORE ? (() => {
           const score = propertyData.habitable_score;
-          if (!score) return <p className="text-xs text-[var(--muted-dim)]">Score unavailable</p>;
+          if (!score) return <p className="text-xs text-[var(--hab-muted)]">Score unavailable</p>;
           if (score.type === "score") {
             return (
               <div>
-                <p className={`text-sm font-bold ${score.accentColor === "green" ? "text-green-400" : score.accentColor === "amber" ? "text-[#FFB020]" : "text-[#FF4D4D]"}`}>
+                <p className="text-sm font-bold" style={{
+                  color: score.accentColor === "green" ? "var(--signal-green)" : score.accentColor === "amber" ? "var(--signal-amber)" : "var(--signal-red)",
+                }}>
                   Better than {score.percentile}%
                 </p>
-                <p className="text-[10px] text-[var(--muted-dim)]">Habitable Score</p>
+                <p className="text-[10px] text-[var(--hab-muted)]">Habitable Score</p>
               </div>
             );
           }
           if (score.type === "clean") {
-            return <p className="text-sm font-bold text-green-400">{score.tier === 1 ? "Clean record" : "No open violations"}</p>;
+            return <p className="text-sm font-bold" style={{ color: "var(--signal-green)" }}>{score.tier === 1 ? "Clean record" : "No open violations"}</p>;
           }
           if (score.type === "no_score" && score.reason === "aep") {
             return (
-              <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold bg-[#431407] text-orange-400">
+              <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: "var(--banner-amber-bg)", color: "var(--banner-amber-ink)" }}>
                 AEP Watchlist
               </span>
             );
           }
-          return <p className="text-xs text-[var(--muted-dim)]">Score unavailable</p>;
+          return <p className="text-xs text-[var(--hab-muted)]">Score unavailable</p>;
         })() : (
           <span
             className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
@@ -189,39 +185,38 @@ function BuildingCard({
         )}
       </div>
 
-      {/* Stats */}
       <div className="space-y-2 flex-1">
         <div className="flex justify-between text-sm">
-          <span className="text-[var(--muted)]">Violations (2yr)</span>
-          <span className="font-semibold text-[var(--foreground)]">
+          <span className="text-[var(--hab-muted)]">Violations (2yr)</span>
+          <span className="font-semibold text-[var(--hab-ink)]">
             {recentViolationCount}
           </span>
         </div>
-        <div className="flex justify-between text-xs text-[var(--muted-dim)] pl-3">
+        <div className="flex justify-between text-xs text-[var(--hab-ink-2)] pl-3">
           <span>Class breakdown</span>
           <span>
-            <span style={{ color: CLASS_INFO.C.color }}>{classC}C</span>
+            <span style={{ color: "var(--sev-c)" }}>{classC}C</span>
             {" / "}
-            <span style={{ color: CLASS_INFO.B.color }}>{classB}B</span>
+            <span style={{ color: "var(--sev-b)" }}>{classB}B</span>
             {" / "}
-            <span style={{ color: CLASS_INFO.A.color }}>{classA}A</span>
+            <span style={{ color: "var(--sev-a)" }}>{classA}A</span>
           </span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-[var(--muted)]">Complaints (2yr)</span>
-          <span className="font-semibold text-[var(--foreground)]">
+          <span className="text-[var(--hab-muted)]">Complaints (2yr)</span>
+          <span className="font-semibold text-[var(--hab-ink)]">
             {recentComplaints}
           </span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-[var(--muted)]">Litigation (2yr)</span>
-          <span className="font-semibold text-[var(--foreground)]">
+          <span className="text-[var(--hab-muted)]">Litigation (2yr)</span>
+          <span className="font-semibold text-[var(--hab-ink)]">
             {recentLitigation}
           </span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-[var(--muted)]">Bed bugs</span>
-          <span className="font-semibold" style={{ color: recentBedbugs.length > 0 ? "#FFB020" : "var(--muted)" }}>
+          <span className="text-[var(--hab-muted)]">Bed bugs</span>
+          <span className="font-semibold" style={{ color: recentBedbugs.length > 0 ? "var(--signal-amber)" : "var(--hab-muted)" }}>
             {recentBedbugs.length > 0 ? "Reported" : "Clean"}
           </span>
         </div>
@@ -232,41 +227,39 @@ function BuildingCard({
             <>
               {leadCount > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-[var(--muted)]">Lead paint</span>
-                  <span className="font-semibold text-[var(--foreground)]">{leadCount} open</span>
+                  <span className="text-[var(--hab-muted)]">Lead paint</span>
+                  <span className="font-semibold text-[var(--hab-ink)]">{leadCount} open</span>
                 </div>
               )}
               {woCount > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-[var(--muted)]">Emergency repairs</span>
-                  <span className="font-semibold text-[var(--foreground)]">{woCount}</span>
+                  <span className="text-[var(--hab-muted)]">Emergency repairs</span>
+                  <span className="font-semibold text-[var(--hab-ink)]">{woCount}</span>
                 </div>
               )}
             </>
           );
         })()}
 
-        {/* Vacate order — only if not rescinded */}
         {propertyData.vacate_orders.some((v) => !v.rescind_date) && (
-          <div className="rounded-lg border border-red-800 bg-red-950 px-2 py-1.5 mt-2">
-            <p className="text-xs font-semibold text-red-400">
+          <div className="rounded-lg border px-2 py-1.5 mt-2" style={{ borderColor: "var(--banner-red-border)", background: "var(--banner-red-bg)" }}>
+            <p className="text-xs font-semibold" style={{ color: "var(--banner-red-ink)" }}>
               Active vacate order
             </p>
           </div>
         )}
         {(propertyData.aep_status ?? []).some((a) => a.current_status === "AEP Active") && (
-          <div className="rounded-lg border border-[#7C2D12] bg-[#431407] px-2 py-1.5 mt-2">
-            <p className="text-xs font-semibold text-orange-400">
+          <div className="rounded-lg border px-2 py-1.5 mt-2" style={{ borderColor: "var(--banner-amber-border)", background: "var(--banner-amber-bg)" }}>
+            <p className="text-xs font-semibold" style={{ color: "var(--banner-amber-ink)" }}>
               AEP Watchlist
             </p>
           </div>
         )}
       </div>
 
-      {/* View full profile link */}
       <Link
         href={`/property/${bbl}${searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : ""}`}
-        className="mt-4 block text-center rounded-lg border border-[var(--card-border)] py-2 text-sm text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+        className="mt-4 block text-center rounded-lg border border-[var(--hab-line)] py-2 text-sm text-[var(--hab-muted)] hover:text-[var(--hab-ink)] transition-colors"
       >
         View full profile
       </Link>
@@ -283,14 +276,12 @@ function CompareContent() {
   const [buildings, setBuildings] = useState<BuildingData[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(initialBbls.length > 0);
 
-  // Update URL when buildings change
   function updateUrl(buildingList: BuildingData[]) {
     const bbls = buildingList.map((b) => b.bbl).join(",");
     const url = bbls ? `/compare?bbls=${bbls}` : "/compare";
     window.history.replaceState(null, "", url);
   }
 
-  // Load initial buildings from URL params
   useEffect(() => {
     if (initialBbls.length === 0) return;
 
@@ -306,7 +297,6 @@ function CompareContent() {
             results.push({ bbl: bblVal, addressLabel: label, propertyData: propData });
           })
         );
-        // Maintain the original order from the URL
         const ordered = initialBbls
           .map((b) => results.find((r) => r.bbl === b))
           .filter((r): r is BuildingData => !!r);
@@ -333,17 +323,17 @@ function CompareContent() {
   }
 
   return (
-    <div className="min-h-screen font-[family-name:var(--font-geist-sans)]">
-      <header className="border-b border-[var(--card-border)] bg-[var(--card)]">
+    <div className="min-h-screen font-[family-name:var(--font-ui)]">
+      <header className="border-b border-[var(--hab-line)] bg-[var(--hab-paper)]">
         <div className="mx-auto max-w-4xl px-5 py-4">
           <div className="flex items-center gap-3 mb-3">
             <Link
               href="/"
-              className="text-lg font-bold tracking-tight text-[var(--foreground)]"
+              className="text-lg font-[family-name:var(--font-serif)] font-bold tracking-tight text-[var(--hab-ink)]"
             >
               Habitable
             </Link>
-            <span className="text-sm text-[var(--muted-dim)]">/ Compare</span>
+            <span className="text-sm text-[var(--hab-muted)]">/ Compare</span>
           </div>
           {buildings.length < 3 && (
             <BuildingSearch onResult={handleResult} loading={loadingInitial} />
@@ -353,17 +343,17 @@ function CompareContent() {
 
       <main className="mx-auto max-w-4xl px-5 py-6">
         {loadingInitial && (
-          <p className="text-center text-sm text-[var(--muted)] py-12">
+          <p className="text-center text-sm text-[var(--hab-muted)] py-12">
             Loading building data...
           </p>
         )}
 
         {buildings.length === 0 && !loadingInitial && (
           <div className="text-center py-16">
-            <p className="text-[var(--muted)] text-sm mb-2">
+            <p className="text-[var(--hab-muted)] text-sm mb-2">
               Search for buildings above to compare them side by side.
             </p>
-            <p className="text-[var(--muted-dim)] text-xs">
+            <p className="text-[var(--hab-ink-2)] text-xs">
               Add up to 3 buildings.
             </p>
           </div>
@@ -391,15 +381,15 @@ function CompareContent() {
 
         {buildings.length > 0 && buildings.length < 3 && (
           <div className="text-center mt-4">
-            <p className="text-xs text-[var(--muted-dim)]">
+            <p className="text-xs text-[var(--hab-ink-2)]">
               {3 - buildings.length} more building{buildings.length === 2 ? "" : "s"} can be added.
             </p>
           </div>
         )}
         {SHOW_HABITABLE_SCORE && buildings.length > 0 && (
           <div className="text-center mt-6 space-y-1">
-            <Link href="/methodology" className="text-[10px] text-[var(--muted)] hover:text-[var(--foreground)]">How this works &rarr;</Link>
-            <p className="text-[10px] text-[var(--muted-dim)]">Based on NYC public records. Informational only: verify details before making decisions.</p>
+            <Link href="/methodology" className="text-[10px] text-[var(--hab-muted)] hover:text-[var(--hab-ink)]">How this works &rarr;</Link>
+            <p className="text-[10px] text-[var(--hab-ink-2)]">Based on NYC public records. Informational only: verify details before making decisions.</p>
           </div>
         )}
       </main>
@@ -411,7 +401,7 @@ export default function CompareClient() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-sm text-[var(--muted)]">Loading...</p>
+        <p className="text-sm text-[var(--hab-muted)]">Loading...</p>
       </div>
     }>
       <CompareContent />

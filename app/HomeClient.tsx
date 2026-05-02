@@ -53,25 +53,25 @@ export default function HomeClient() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center font-[family-name:var(--font-geist-sans)]">
+    <div className="min-h-screen flex items-center justify-center font-[family-name:var(--font-ui)]">
       <div className="w-full max-w-xl px-5">
-        <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)] text-center mb-2">
+        <h1 className="text-3xl font-[family-name:var(--font-serif)] font-bold tracking-tight text-[var(--hab-ink)] text-center mb-2">
           Habitable
         </h1>
-        <p className="text-sm text-[var(--muted)] text-center mb-8">
+        <p className="text-sm text-[var(--hab-muted)] text-center mb-8">
           Look up any NYC building before you sign a lease
         </p>
         <AddressAutocomplete onSubmit={handleSubmit} onSelect={handleSelect} variant="hero" />
-        {loading && <p className="text-center text-xs text-[var(--muted-dim)] mt-3">Loading...</p>}
+        {loading && <p className="text-center text-xs text-[var(--hab-ink-2)] mt-3">Loading...</p>}
         {error && (
-          <div className="mt-4 rounded-xl border border-red-900 bg-red-950 px-4 py-3 text-sm text-red-400">
+          <div className="mt-4 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: "var(--banner-red-border)", background: "var(--banner-red-bg)", color: "var(--banner-red-ink)" }}>
             {error}
           </div>
         )}
         <div className="text-center mt-4">
           <Link
             href="/compare"
-            className="text-xs text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+            className="text-xs text-[var(--hab-muted)] hover:text-[var(--hab-ink)] transition-colors"
           >
             Compare multiple buildings
           </Link>

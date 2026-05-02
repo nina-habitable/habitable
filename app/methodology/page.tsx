@@ -23,10 +23,10 @@ function ExtLink({ href, children }: { href: string; children: React.ReactNode }
 
 export default function MethodologyPage() {
   return (
-    <div className="min-h-screen font-[family-name:var(--font-geist-sans)]">
-      <header className="border-b border-[var(--card-border)] bg-[var(--card)]">
+    <div className="min-h-screen font-[family-name:var(--font-ui)]">
+      <header className="border-b border-[var(--hab-line)] bg-[var(--hab-paper)]">
         <div className="mx-auto max-w-2xl px-5 py-4">
-          <Link href="/" className="text-lg font-bold tracking-tight text-[var(--foreground)]">Habitable</Link>
+          <Link href="/" className="text-lg font-[family-name:var(--font-serif)] font-bold tracking-tight text-[var(--hab-ink)]">Habitable</Link>
         </div>
       </header>
 
@@ -34,20 +34,20 @@ export default function MethodologyPage() {
         <article className="space-y-8">
 
           <div>
-            <h1 className="text-2xl font-bold text-[var(--foreground)] mb-4">How the Habitable Score Works</h1>
+            <h1 className="text-2xl font-[family-name:var(--font-serif)] font-bold text-[var(--hab-ink)] mb-4">How the Habitable Score Works</h1>
             <p className="text-sm text-[var(--muted)] leading-relaxed">The Habitable Score is a peer comparison based on public records. It shows how a building&apos;s open violation, complaint, litigation, and bed bug history compares to other NYC buildings of similar size. It is not a rating, a verdict, or a recommendation.</p>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-3">This page explains exactly how the score is calculated, what data it uses, and what it does not capture. If you are about to sign a lease, we want you to understand the score well enough to decide how much weight to give it.</p>
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">What the score is</h2>
+            <h2 className="text-lg font-[family-name:var(--font-serif)] font-semibold text-[var(--hab-ink)] mb-3">What the score is</h2>
             <p className="text-sm text-[var(--muted)] leading-relaxed">The Habitable Score shows where a building sits among its peers. A score of &quot;Better than 70%&quot; means the building has fewer weighted issues per unit than 70% of comparable NYC buildings in the last two years.</p>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-3">The score is based on records, not opinions. We do not currently inspect buildings, interview tenants, or collect reviews. Everything that goes into the score is publicly filed with New York City and available for anyone to verify.</p>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-3">The score is informational. It is one input into a leasing decision, not a replacement for visiting a property, asking questions, or doing your own research.</p>
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">What the score is not</h2>
+            <h2 className="text-lg font-[family-name:var(--font-serif)] font-semibold text-[var(--hab-ink)] mb-3">What the score is not</h2>
             <p className="text-sm text-[var(--muted)] leading-relaxed">The Habitable Score is not a rating or a grade. There are no letter grades and no thresholds for &quot;good&quot; or &quot;bad.&quot;</p>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-3">The Habitable Score is not a verdict on a landlord. A landlord may own many buildings. The score reflects one building&apos;s record, not the landlord&apos;s overall performance.</p>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-3">The Habitable Score is not legal, financial, or real estate advice. It does not predict whether a specific apartment will have problems, whether a lease is fair, or whether a landlord will be responsive.</p>
@@ -55,7 +55,7 @@ export default function MethodologyPage() {
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">Data sources</h2>
+            <h2 className="text-lg font-[family-name:var(--font-serif)] font-semibold text-[var(--hab-ink)] mb-3">Data sources</h2>
             <p className="text-sm text-[var(--muted)] leading-relaxed mb-3">The score is calculated from 12 NYC public datasets, all freely accessible through NYC Open Data. Each dataset is linked below for verification:</p>
             <ul className="space-y-2 text-sm text-[var(--muted)] leading-relaxed">
               <li><ExtLink href="https://data.cityofnewyork.us/Housing-Development/Housing-Maintenance-Code-Violations/wvxf-dwi5">HPD Housing Code Violations</ExtLink>: open violations classified A (non-hazardous), B (hazardous), C (immediately hazardous), and I (information/order)</li>
@@ -76,7 +76,7 @@ export default function MethodologyPage() {
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">Peer groups</h2>
+            <h2 className="text-lg font-[family-name:var(--font-serif)] font-semibold text-[var(--hab-ink)] mb-3">Peer groups</h2>
             <p className="text-sm text-[var(--muted)] leading-relaxed">Buildings are compared against peers of similar size. A 200-unit building and a 5-unit building have very different typical violation counts, so a single citywide comparison would be misleading.</p>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-3">The six peer groups are based on legal unit count from HPD Buildings:</p>
             <ul className="mt-2 space-y-1 text-sm text-[var(--muted)] list-disc list-inside">
@@ -91,7 +91,7 @@ export default function MethodologyPage() {
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">How the score is calculated</h2>
+            <h2 className="text-lg font-[family-name:var(--font-serif)] font-semibold text-[var(--hab-ink)] mb-3">How the score is calculated</h2>
             <p className="text-sm text-[var(--muted)] leading-relaxed">The score is a weighted percentile across six factors. Each factor is calculated per unit where applicable, so small and large buildings are compared on equal footing.</p>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-3">The weights are:</p>
             <ul className="mt-2 space-y-1 text-sm text-[var(--muted)] list-disc list-inside">
@@ -107,7 +107,7 @@ export default function MethodologyPage() {
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">Why these weights</h2>
+            <h2 className="text-lg font-[family-name:var(--font-serif)] font-semibold text-[var(--hab-ink)] mb-3">Why these weights</h2>
             <p className="text-sm text-[var(--muted)] leading-relaxed">The weights are judgment calls grounded in four principles: severity, enforceability, renter-relevance, and base-rate frequency. No scoring system of this kind has a mathematically &quot;correct&quot; answer. Any weighted composite reflects choices about what matters most. Ours are explained below so you can decide whether you agree with them.</p>
 
             <h3 className="text-sm font-semibold text-[var(--foreground)] mt-5 mb-2">Open violations per unit: 30%</h3>
@@ -132,14 +132,14 @@ export default function MethodologyPage() {
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">Time window</h2>
+            <h2 className="text-lg font-[family-name:var(--font-serif)] font-semibold text-[var(--hab-ink)] mb-3">Time window</h2>
             <p className="text-sm text-[var(--muted)] leading-relaxed">The Habitable Score always reflects the last two years. This is a deliberate design choice: the score is meant to show current building conditions, not historical ones. A building that had serious problems five years ago but has resolved them should not carry a permanent penalty.</p>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-3">Every building page includes an &quot;All time&quot; toggle. When toggled, the violation counts, complaint counts, and individual records below the score update to show the building&apos;s full history. The score itself does not change. A small label reading &quot;Score reflects last 2 years&quot; appears on the All Time view so this is clear.</p>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-3">We chose this approach because showing two competing scores (a recent one and an all-time one) can create confusion. A renter seeing &quot;Better than 80%&quot; on one view and &quot;Better than 35%&quot; on another has no clear way to decide which one to trust. Anchoring the score to recent data and letting the full record speak through the counts below gives renters both signals without the contradiction.</p>
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">Status filter</h2>
+            <h2 className="text-lg font-[family-name:var(--font-serif)] font-semibold text-[var(--hab-ink)] mb-3">Status filter</h2>
             <p className="text-sm text-[var(--muted)] leading-relaxed">Violations are counted as open unless they are in one of seven closed statuses:</p>
             <ol className="mt-2 space-y-1 text-sm text-[var(--muted)] list-decimal list-inside">
               <li>VIOLATION CLOSED</li>
@@ -154,14 +154,14 @@ export default function MethodologyPage() {
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">Special cases</h2>
+            <h2 className="text-lg font-[family-name:var(--font-serif)] font-semibold text-[var(--hab-ink)] mb-3">Special cases</h2>
             <p className="text-sm text-[var(--muted)] leading-relaxed"><strong>Buildings on the AEP watchlist.</strong> The Alternative Enforcement Program is HPD&apos;s designation for the worst-conditioned buildings in New York City. When a building is actively on AEP, we do not display a percentile score. Instead, we show an AEP banner. The banner is the signal.</p>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-3"><strong>Clean buildings.</strong> When a building has no open violations, no recent complaints, and no litigation in the selected time window, we display &quot;Clean record&quot; rather than a percentile. Some clean buildings had past issues that were resolved. Those are shown as &quot;No open violations. X violations were issued and closed and Y complaints filed in the last 2 years,&quot; so readers can see the history. On the All Time view, clean buildings continue to show the clean record message rather than switching to a historical percentile. The building&apos;s full history is visible in the counts and records below the score.</p>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-3"><strong>Condo and co-op buildings.</strong> Condos and co-ops register at the unit level in HPD&apos;s system, while violation data is filed at the building level. When a search resolves to a unit BBL, we show a message explaining that the building-level record may be accessed under a different identifier. Condos and co-ops also often list a homeowners&apos; association as the &quot;owner,&quot; which is not the same as the renter&apos;s landlord.</p>
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">What the score does not capture</h2>
+            <h2 className="text-lg font-[family-name:var(--font-serif)] font-semibold text-[var(--hab-ink)] mb-3">What the score does not capture</h2>
             <p className="text-sm text-[var(--muted)] leading-relaxed mb-3">Honesty about limits matters more than claims about coverage. Here is what the Habitable Score does not include:</p>
             <ul className="space-y-2 text-sm text-[var(--muted)] leading-relaxed list-disc list-inside">
               <li><strong>Department of Buildings (DOB) construction violations.</strong> These are available through 311 service requests but not through HPD&apos;s housing code dataset. They are displayed on building pages but do not factor into the score.</li>
@@ -176,20 +176,20 @@ export default function MethodologyPage() {
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">Data accuracy and updates</h2>
+            <h2 className="text-lg font-[family-name:var(--font-serif)] font-semibold text-[var(--hab-ink)] mb-3">Data accuracy and updates</h2>
             <p className="text-sm text-[var(--muted)] leading-relaxed">Violation counts have been validated against HPD Online at 90% to 99.8% accuracy across test buildings, depending on the building. Remaining discrepancies are due to different status filter definitions, which is why we show both &quot;require action&quot; and &quot;total open&quot; counts on every building page.</p>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-3">Data is refreshed from NYC Open Data on each property lookup and cached for 24 hours. A property page displays &quot;Last updated: [timestamp]&quot; at the bottom. If records have changed in the last 24 hours, the next lookup after the cache expires will reflect them.</p>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-3">Percentile thresholds are based on a full-dataset snapshot of 317,872 NYC buildings. The distribution does not shift dramatically month to month, but thresholds are scheduled for quarterly regeneration to prevent drift.</p>
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">Errors and corrections</h2>
+            <h2 className="text-lg font-[family-name:var(--font-serif)] font-semibold text-[var(--hab-ink)] mb-3">Errors and corrections</h2>
             <p className="text-sm text-[var(--muted)] leading-relaxed">Public records contain errors. If you believe the record displayed for a specific building is wrong, the authoritative source is NYC Open Data directly. Habitable does not edit NYC records. We surface and summarize them.</p>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-3">If you notice a bug in how Habitable displays a record, or a case where our summary clearly misrepresents the underlying data, please contact <a href="mailto:habitable.feedback@gmail.com" className="text-[var(--foreground)] underline hover:opacity-80">habitable.feedback@gmail.com</a>.</p>
           </div>
 
           <div className="border-t border-[var(--card-border)] pt-6">
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">Disclaimer</h2>
+            <h2 className="text-lg font-[family-name:var(--font-serif)] font-semibold text-[var(--hab-ink)] mb-3">Disclaimer</h2>
             <p className="text-sm text-[var(--muted)] leading-relaxed">The Habitable Score is based on publicly available New York City records. Records may contain errors, omissions, or delays that affect the score. This information is provided for informational purposes only and is not legal, financial, or real estate advice. It is not a substitute for your own due diligence, visiting a property, asking questions, or consulting a housing attorney.</p>
             <p className="text-sm text-[var(--muted)] leading-relaxed mt-3">Habitable is not affiliated with the City of New York, the Department of Housing Preservation and Development, or any listing platform including StreetEasy or Zillow.</p>
           </div>
