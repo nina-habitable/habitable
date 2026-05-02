@@ -1289,6 +1289,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
               summary="View all individual records"
             >
             <div>
+              <p className="text-xs text-[var(--hab-muted)] mb-3">Showing open violations only. Closed and dismissed violations are not listed.</p>
               <div className="flex items-center gap-1 bg-[var(--hab-paper)] rounded-lg p-1 border border-[var(--hab-line)] w-fit mb-4 flex-wrap">
                 {(["violations", "complaints", "litigation", "311"] as const).map((tab) => (
                   <button key={tab} onClick={() => setActiveTab(tab)} className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${activeTab === tab ? "bg-[var(--hab-ink)] text-[var(--hab-paper)]" : "text-[var(--hab-muted)] hover:text-[var(--hab-ink)]"}`}>
