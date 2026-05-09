@@ -327,6 +327,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
   const geoBin = searchParams.get("bin") || "";
   const geoHood = searchParams.get("hood") || "";
   const searchedAddress = searchParams.get("searched") || "";
+  const tabParam = searchParams.get("tab") || "";
 
   const [searchError, setSearchError] = useState("");
   const [addressLabel, setAddressLabel] = useState(geoAddress);
@@ -336,7 +337,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
   const [visibleCount, setVisibleCount] = useState(10);
   const [timeframe, setTimeframe] = useState<"recent" | "all">("recent");
   const [activeTab, setActiveTab] = useState<"violations" | "complaints" | "litigation" | "311">("violations");
-  const [pageView, setPageView] = useState<"summary" | "full">("summary");
+  const [pageView, setPageView] = useState<"summary" | "full">(tabParam === "full" ? "full" : "summary");
 
   useEffect(() => {
     async function load() {
