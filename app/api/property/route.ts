@@ -279,6 +279,10 @@ export async function GET(request: NextRequest) {
           cachedAddress = `${raw.housenumber} ${raw.streetname}, ${boro}, NY`;
         }
       }
+      // Fall back to the address param from the request URL
+      if (!cachedAddress && geoAddress) {
+        cachedAddress = geoAddress;
+      }
 
       const cachedPayload = {
         violations: cached,

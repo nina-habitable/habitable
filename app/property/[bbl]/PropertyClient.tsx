@@ -352,7 +352,10 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
         if (!res.ok) throw new Error("Failed to fetch property data");
         const data: PropertyResponse = await res.json();
         setPropertyData(data);
-        if (data.address_label) setAddressLabel(data.address_label);
+        // Always update display address from API response if available
+        if (data.address_label) {
+          setAddressLabel(data.address_label);
+        }
       } catch { setError("Failed to load property data."); }
       finally { setLoadingProperty(false); }
     }
