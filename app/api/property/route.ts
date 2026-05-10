@@ -271,17 +271,38 @@ export async function GET(request: NextRequest) {
       const cachedUniqueComplaints = new Set(cachedComplaintsList.map((c: Record<string, string>) => c.complaint_id));
 
       // Build address from cached violation data if not in properties table
+      const boroNames: Record<string, string> = { "1": "Manhattan", "2": "Bronx", "3": "Brooklyn", "4": "Queens", "5": "Staten Island" };
       let cachedAddress = cachedProperty.data?.address ?? null;
-      if (!cachedAddress && cached[0]?.raw) {
-        const raw = typeof cached[0].raw === "string" ? JSON.parse(cached[0].raw) : cached[0].raw;
-        if (raw.housenumber && raw.streetname) {
-          const boro = (raw.boro || "").charAt(0).toUpperCase() + (raw.boro || "").slice(1).toLowerCase();
-          cachedAddress = `${raw.housenumber} ${raw.streetname}, ${boro}, NY`;
+      if (!cachedAddress) {
+        // Try raw violation data (any violation row, not just first)
+        for (const v of cached) {
+          if (!v.raw) continue;
+          const raw = typeof v.raw === "string" ? JSON.parse(v.raw) : v.raw;
+          if (raw.housenumber && raw.streetname) {
+            const boroRaw = raw.boro || raw.boroid || "";
+            const boro = boroNames[boroRaw] || (boroRaw.charAt(0).toUpperCase() + boroRaw.slice(1).toLowerCase());
+            cachedAddress = `${raw.housenumber} ${raw.streetname}, ${boro}, NY`;
+            break;
+          }
+        }
+      }
+      // Fall back to constructing from BBL borough digit
+      if (!cachedAddress && bbl.length === 10) {
+        const boroDigit = bbl[0];
+        const boroName = boroNames[boroDigit] || "";
+        if (boroName && geoAddress) {
+          cachedAddress = geoAddress;
+        } else if (boroName) {
+          cachedAddress = `Building in ${boroName} (BBL ${bbl})`;
         }
       }
       // Fall back to the address param from the request URL
       if (!cachedAddress && geoAddress) {
         cachedAddress = geoAddress;
+      }
+      // Backfill properties table if we resolved an address
+      if (cachedAddress && !cachedProperty.data?.address) {
+        supabaseAdmin.from("properties").update({ address: cachedAddress }).eq("bbl", bbl).then(() => {});
       }
 
       const cachedPayload = {
