@@ -72,6 +72,7 @@ export interface RegistrationContact {
 }
 
 export interface PropertyResponse {
+  bbl: string;
   violations: Violation[];
   vacate_orders: VacateOrder[];
   complaints: Complaint[];

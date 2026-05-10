@@ -285,6 +285,7 @@ export async function GET(request: NextRequest) {
       }
 
       const cachedPayload = {
+        bbl,
         violations: cached,
         vacate_orders: cachedVacate.data ?? [],
         complaints: cachedComplaintsList,
@@ -678,6 +679,7 @@ export async function GET(request: NextRequest) {
     }));
 
     const freshPayload = {
+      bbl,
       violations: mappedViolations,
       vacate_orders: mappedVacate,
       complaints: mappedComplaints,
