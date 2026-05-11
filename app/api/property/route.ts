@@ -371,7 +371,7 @@ export async function GET(request: NextRequest) {
 
     // Build address from HPD data, fall back to Geosearch address
     const firstViolation = violations[0];
-    const addressLabel = firstViolation
+    let addressLabel: string | null = firstViolation
       ? `${firstViolation.housenumber} ${firstViolation.streetname}, ${(firstViolation.boro || "").charAt(0).toUpperCase() + (firstViolation.boro || "").slice(1).toLowerCase()}, NY`
       : geoAddress || null;
     // Prefer Geosearch neighbourhood (clean single name) over violation NTA (combined)
@@ -427,6 +427,16 @@ export async function GET(request: NextRequest) {
       management_program: buildingDetailsRaw[0].managementprogram || null,
       registration_id: buildingDetailsRaw[0].registrationid || null,
     } : null;
+
+    // If address is still null, try building details raw data (has housenumber, streetname, boro)
+    if (!addressLabel && buildingDetailsRaw[0]) {
+      const bd = buildingDetailsRaw[0];
+      if (bd.housenumber && bd.streetname) {
+        const boroNames: Record<string, string> = { "1": "Manhattan", "2": "Bronx", "3": "Brooklyn", "4": "Queens", "5": "Staten Island" };
+        const boro = boroNames[bd.boroid] || (bd.boro || "").charAt(0).toUpperCase() + (bd.boro || "").slice(1).toLowerCase();
+        addressLabel = `${bd.housenumber} ${bd.streetname}, ${boro}, NY`;
+      }
+    }
 
     // Map contacts
     const mappedContacts = contactsRaw.map((c) => {
