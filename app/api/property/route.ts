@@ -437,6 +437,10 @@ export async function GET(request: NextRequest) {
         addressLabel = `${bd.housenumber} ${bd.streetname}, ${boro}, NY`;
       }
     }
+    // Final fallback: use the address URL parameter directly
+    if (!addressLabel) {
+      addressLabel = request.nextUrl.searchParams.get("address") || null;
+    }
 
     // Map contacts
     const mappedContacts = contactsRaw.map((c) => {
