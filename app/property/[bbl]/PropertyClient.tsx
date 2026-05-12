@@ -1048,7 +1048,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                     <div className="space-y-1">
                       {portfolio.slice(0, 10).map((b) => (
                         <div key={b.bbl} className="flex items-center justify-between">
-                          <Link href={`/property/${b.bbl}`} className="text-xs text-[var(--foreground)] hover:underline truncate">{b.address}</Link>
+                          <Link href={`/property/${b.bbl}?address=${encodeURIComponent(b.address)}`} className="text-xs text-[var(--foreground)] hover:underline truncate">{b.address}</Link>
                           <span className="text-[10px] text-[var(--muted-dim)] ml-2 shrink-0 font-[family-name:var(--font-mono)]">{b.bbl}</span>
                         </div>
                       ))}
@@ -1066,7 +1066,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                   <div className="space-y-1">
                     {linkedProperties.map((lp) => (
                       <div key={lp.bbl} className="flex items-center justify-between">
-                        <Link href={`/property/${lp.bbl}`} className="text-xs text-[var(--foreground)] hover:underline truncate">
+                        <Link href={`/property/${lp.bbl}?address=${encodeURIComponent(lp.address)}`} className="text-xs text-[var(--foreground)] hover:underline truncate">
                           {lp.address}
                           {lp.date && <span className="text-[var(--muted-dim)]"> · {formatDate(lp.date)}</span>}
                           {lp.confirmed && <span className="text-[10px] ml-1" style={{ color: "var(--signal-green)" }}>&#x2713;</span>}

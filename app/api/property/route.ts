@@ -441,6 +441,11 @@ export async function GET(request: NextRequest) {
     if (!addressLabel) {
       addressLabel = request.nextUrl.searchParams.get("address") || null;
     }
+    // Last resort: check properties table for a previously cached address
+    if (!addressLabel) {
+      const { data: existingProp } = await supabaseAdmin.from("properties").select("address").eq("bbl", bbl).maybeSingle();
+      if (existingProp?.address) addressLabel = existingProp.address;
+    }
 
     // Map contacts
     const mappedContacts = contactsRaw.map((c) => {
