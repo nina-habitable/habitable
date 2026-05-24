@@ -155,9 +155,11 @@ export default function PropertySummary({
 
       {/* 4. SECTION: Assessment */}
       <div className="mb-8">
-        <p className="text-[11px] font-[family-name:var(--font-mono)] uppercase tracking-[0.06em] text-[var(--hab-muted)] mb-3">
-          &sect; {assessmentNum} &mdash; Assessment
-        </p>
+        <div className="border-t border-[#e8e2d9] pt-4">
+          <p className="text-xs font-[family-name:var(--font-mono)] uppercase tracking-[0.06em] text-[#5a4f42] font-semibold mb-3 pl-3.5 border-l-[3px] border-[#8b2500]">
+            &sect; {assessmentNum} &mdash; Assessment
+          </p>
+        </div>
         {summary?.details ? (
           <p className="text-sm font-[family-name:var(--font-serif)] text-[var(--hab-ink)] leading-relaxed">
             {summary.details}
@@ -169,10 +171,12 @@ export default function PropertySummary({
 
       {/* 5. SECTION: Flags on file — only if vacate or AEP active */}
       {hasFlagsSection && (
-        <div className="mb-8">
-          <p className="text-[11px] font-[family-name:var(--font-mono)] uppercase tracking-[0.06em] text-[var(--hab-muted)] mb-3">
-            &sect; {flagsNum} &mdash; Flags on file
-          </p>
+        <div className="mb-8 mt-10">
+          <div className="border-t border-[#e8e2d9] pt-4">
+            <p className="text-xs font-[family-name:var(--font-mono)] uppercase tracking-[0.06em] text-[#5a4f42] font-semibold mb-3 pl-3.5 border-l-[3px] border-[#8b2500]">
+              &sect; {flagsNum} &mdash; Flags on file
+            </p>
+          </div>
           {hasActiveVacate && (() => {
             const vacate = propertyData.vacate_orders.find((v) => !v.rescind_date);
             return (
@@ -206,10 +210,12 @@ export default function PropertySummary({
 
       {/* 6. SECTION: Questions to ask */}
       {landlordQuestions.length > 0 && (
-        <div className="mb-8">
-          <p className="text-[11px] font-[family-name:var(--font-mono)] uppercase tracking-[0.06em] text-[var(--hab-muted)] mb-3">
-            &sect; {questionsNum} &mdash; Three questions to ask before you sign
-          </p>
+        <div className="mb-8 mt-10">
+          <div className="border-t border-[#e8e2d9] pt-4">
+            <p className="text-xs font-[family-name:var(--font-mono)] uppercase tracking-[0.06em] text-[#5a4f42] font-semibold mb-3 pl-3.5 border-l-[3px] border-[#8b2500]">
+              &sect; {questionsNum} &mdash; Three questions to ask before you sign
+            </p>
+          </div>
           <ol className="space-y-4">
             {landlordQuestions.slice(0, 3).map((q, i) => (
               <li key={i} className="flex gap-3">
@@ -229,10 +235,12 @@ export default function PropertySummary({
       )}
 
       {/* 7. SECTION: Ownership */}
-      <div className="mb-8">
-        <p className="text-[11px] font-[family-name:var(--font-mono)] uppercase tracking-[0.06em] text-[var(--hab-muted)] mb-3">
-          &sect; {ownershipNum} &mdash; Ownership
-        </p>
+      <div className="mb-8 mt-10">
+        <div className="border-t border-[#e8e2d9] pt-4">
+          <p className="text-xs font-[family-name:var(--font-mono)] uppercase tracking-[0.06em] text-[#5a4f42] font-semibold mb-3 pl-3.5 border-l-[3px] border-[#8b2500]">
+            &sect; {ownershipNum} &mdash; Ownership
+          </p>
+        </div>
         {ownerName || deeds.length > 0 ? (
           <p className="text-sm font-[family-name:var(--font-serif)] text-[var(--hab-ink)] leading-relaxed">
             {ownerName && <>Owned by <strong>{contacts.owner?.corporation_name ? <EntityLink name={contacts.owner.corporation_name} /> : ownerName}</strong></>}
