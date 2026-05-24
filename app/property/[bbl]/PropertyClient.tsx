@@ -1035,6 +1035,11 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                   )}
                 </div>
               )}
+              {contacts.owner && contacts.agent && (
+                <p className="text-[11px] text-[var(--hab-muted)] mt-2 font-[family-name:var(--font-ui)]">
+                  Owner is the registered building owner. Agent is the company or person hired to manage the building.
+                </p>
+              )}
               {(() => {
                 const ownerName = contacts.owner?.corporation_name;
                 if (!ownerName) return null;
@@ -1062,7 +1067,8 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
               {/* ACRIS LLC Linking */}
               {linkedProperties.length > 0 && linkedName && (
                 <div>
-                  <h4 className="text-xs font-semibold text-[var(--muted-dim)] uppercase tracking-wide mb-2">Other properties linked to {linkedName}</h4>
+                  <h4 className="text-xs font-semibold text-[var(--muted-dim)] uppercase tracking-wide mb-1">Other properties linked to {linkedName}</h4>
+                  <p className="text-[11px] text-[var(--hab-muted)] mb-2 font-[family-name:var(--font-ui)]">Based on property sale and transfer records (ACRIS)</p>
                   <p className="text-xs text-[var(--muted)] mb-2">{linkedName} is also linked to {linkedProperties.length} other property transaction{linkedProperties.length === 1 ? "" : "s"}:</p>
                   <div className="space-y-1">
                     {linkedProperties.map((lp) => (

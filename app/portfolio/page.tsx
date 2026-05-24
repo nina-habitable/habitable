@@ -153,7 +153,7 @@ function PortfolioContent() {
     <div className="min-h-screen flex flex-col font-[family-name:var(--font-ui)]">
       <header className="border-b border-[var(--hab-line)] bg-[var(--hab-paper)]">
         <div className="mx-auto max-w-2xl px-5 py-4">
-          <Link href="/" className="text-[11px] font-[family-name:var(--font-mono)] uppercase tracking-[0.08em] text-[var(--hab-muted)] hover:text-[var(--hab-ink)]">
+          <Link href="/" className="text-lg font-[family-name:var(--font-serif)] font-semibold tracking-tight text-[var(--hab-ink)]">
             Habitable
           </Link>
         </div>
