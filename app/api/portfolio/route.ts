@@ -21,8 +21,9 @@ const TESW_CHUNK = 100;
 const PROPERTIES_IN_CHUNK = 200;
 const MAX_ENRICHED_BUILDINGS = 120;
 const ENRICH_CONCURRENCY = 8;
-const MAX_LIVE_FETCH = 20;
-const LIVE_FETCH_TIMEOUT_MS = 5000;
+const MAX_LIVE_FETCH = 100;
+const LIVE_BATCH_SIZE = 20;
+const LIVE_QUERY_TIMEOUT_MS = 10000;
 
 interface BuildingEntry {
   bbl: string;
@@ -123,43 +124,107 @@ async function enrichBuilding(bbl: string): Promise<{
   return { open_violations: openViolations, complaints: complaintCount, habitable_score: habitableScore };
 }
 
-// Lightweight live counts (open violations + complaints, last 2 years) straight
-// from the HPD APIs for buildings we have not cached. Aggregate count queries
-// keep this cheap. Not written back to Supabase.
-async function fetchLiveCounts(
-  bbl: string,
-  tokenParam: string
-): Promise<{ open_violations: number; complaints: number }> {
+async function fetchJson(url: string): Promise<Record<string, string>[]> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LIVE_QUERY_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) return [];
+    return (await res.json()) as Record<string, string>[];
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+interface LiveCounts {
+  open_violations: number;
+  class_c: number;
+  complaints: number;
+  units: number | null;
+}
+
+// Fetch lightweight, approximate inputs (open+recent violations, distinct
+// complaints, unit count) for a batch of uncached BBLs straight from HPD.
+// Three parallel queries per batch. Not written back to Supabase.
+async function fetchLiveBatch(bbls: string[], tokenParam: string): Promise<Map<string, LiveCounts>> {
   const cutoff = `${new Date(Date.now() - TWO_YEARS_MS).toISOString().slice(0, 10)}T00:00:00`;
+  const inList = bbls.map((b) => `'${b}'`).join(",");
   const closedIn = CLOSED_STATUSES.map((s) => `'${s.replace(/'/g, "''")}'`).join(",");
 
-  const vWhere = `bbl='${bbl}' AND inspectiondate>='${cutoff}' AND (currentstatus IS NULL OR upper(currentstatus) not in (${closedIn}))`;
+  // Open + recent violation rows (just bbl + class so we can count class C).
+  const vWhere = `bbl in (${inList}) AND inspectiondate>='${cutoff}' AND (currentstatus IS NULL OR upper(currentstatus) not in (${closedIn}))`;
   const vUrl =
     `https://data.cityofnewyork.us/resource/wvxf-dwi5.json` +
-    `?$select=count(*) as n&$where=${encodeURIComponent(vWhere)}${tokenParam}`;
+    `?$select=bbl,class&$where=${encodeURIComponent(vWhere)}&$limit=50000${tokenParam}`;
 
-  const cWhere = `bbl='${bbl}' AND received_date>='${cutoff}'`;
+  // Distinct complaint count per building, last 2 years.
+  const cWhere = `bbl in (${inList}) AND received_date>='${cutoff}'`;
   const cUrl =
     `https://data.cityofnewyork.us/resource/ygpa-z7cr.json` +
-    `?$select=count(distinct complaint_id) as n&$where=${encodeURIComponent(cWhere)}${tokenParam}`;
+    `?$select=bbl,count(distinct complaint_id) as n&$where=${encodeURIComponent(cWhere)}&$group=bbl&$limit=5000${tokenParam}`;
 
-  const fetchCount = async (url: string): Promise<number | null> => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), LIVE_FETCH_TIMEOUT_MS);
-    try {
-      const res = await fetch(url, { signal: controller.signal });
-      if (!res.ok) return null;
-      const json = (await res.json()) as { n?: string }[];
-      return parseInt(json?.[0]?.n ?? "0", 10) || 0;
-    } catch {
-      return null;
-    } finally {
-      clearTimeout(timer);
-    }
-  };
+  // Unit count from HPD Buildings (no bbl column; query by boro/block/lot).
+  const bGroups = bbls
+    .map((b) => `(boroid=${parseInt(b[0], 10)} AND block=${parseInt(b.slice(1, 6), 10)} AND lot=${parseInt(b.slice(6), 10)})`)
+    .join(" OR ");
+  const bUrl =
+    `https://data.cityofnewyork.us/resource/kj4p-ruqc.json` +
+    `?$select=boroid,block,lot,legalclassa&$where=${encodeURIComponent(bGroups)}&$limit=5000${tokenParam}`;
 
-  const [violations, complaints] = await Promise.all([fetchCount(vUrl), fetchCount(cUrl)]);
-  return { open_violations: violations ?? 0, complaints: complaints ?? 0 };
+  const [vRows, cRows, bRows] = await Promise.all([fetchJson(vUrl), fetchJson(cUrl), fetchJson(bUrl)]);
+
+  const result = new Map<string, LiveCounts>();
+  for (const b of bbls) result.set(b, { open_violations: 0, class_c: 0, complaints: 0, units: null });
+
+  for (const r of vRows) {
+    const e = result.get(r.bbl);
+    if (!e) continue;
+    e.open_violations += 1;
+    if ((r.class || "").toUpperCase() === "C") e.class_c += 1;
+  }
+  for (const r of cRows) {
+    const e = result.get(r.bbl);
+    if (e) e.complaints = parseInt(r.n ?? "0", 10) || 0;
+  }
+  for (const r of bRows) {
+    if (!r.boroid || !r.block || !r.lot) continue;
+    const bbl = `${r.boroid}${String(r.block).padStart(5, "0")}${String(r.lot).padStart(4, "0")}`;
+    const e = result.get(bbl);
+    if (!e) continue;
+    // A lot can have several building/registration rows; take the largest unit
+    // count rather than summing, which would double count re-registrations.
+    const u = parseInt(r.legalclassa ?? "", 10);
+    if (u && u > 0) e.units = Math.max(e.units ?? 0, u);
+  }
+
+  return result;
+}
+
+// Run the canonical scoring function from approximate counts. Litigation, AEP,
+// and bed bugs are unavailable here and default to clean, per spec.
+function scoreFromCounts(counts: LiveCounts): HabitableScoreResult {
+  const nowIso = new Date().toISOString();
+  const violations = Array.from({ length: counts.open_violations }, (_, i) => ({
+    status: null,
+    inspectiondate: nowIso,
+    class: i < counts.class_c ? "C" : "A",
+  }));
+  const complaints = Array.from({ length: counts.complaints }, (_, i) => ({
+    complaint_id: `c-${i}`,
+    complaint_status: "CLOSE",
+    received_date: nowIso,
+  }));
+  const pseudoProperty = {
+    violations,
+    complaints,
+    litigations: [],
+    bedbug_reports: [],
+    aep_status: [],
+    building_details: counts.units && counts.units > 0 ? { legal_class_a: counts.units } : null,
+  } as unknown as PropertyResponse;
+  return calculateHabitableScore(pseudoProperty, "recent");
 }
 
 function emptyResponse(name: string) {
@@ -281,26 +346,29 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // For uncached buildings, fetch lightweight live counts straight from HPD
-    // (capped). These are not written back to Supabase.
+    // For uncached buildings (capped), fetch approximate counts + unit data in
+    // parallel batches and run the same scoring function. Not cached back.
     const uncachedBbls = allBbls.filter((b) => !cachedSet.has(b));
     const liveBbls = uncachedBbls.slice(0, MAX_LIVE_FETCH);
-    const liveCounts = new Map<string, { open_violations: number; complaints: number }>();
-    await Promise.all(
-      liveBbls.map(async (bbl) => {
-        try {
-          liveCounts.set(bbl, await fetchLiveCounts(bbl, tokenParam));
-        } catch (error) {
-          console.error(`Portfolio live-count error for ${bbl}:`, error);
-        }
-      })
+    const liveData = new Map<string, { open_violations: number; complaints: number; habitable_score: HabitableScoreResult }>();
+    const liveBatches = await Promise.all(
+      chunk(liveBbls, LIVE_BATCH_SIZE).map((batch) => fetchLiveBatch(batch, tokenParam))
     );
+    liveBatches.forEach((batchMap) => {
+      batchMap.forEach((counts, bbl) => {
+        liveData.set(bbl, {
+          open_violations: counts.open_violations,
+          complaints: counts.complaints,
+          habitable_score: scoreFromCounts(counts),
+        });
+      });
+    });
 
     // D) Build the grouped response.
     const buildEntry = (bbl: string): BuildingEntry => {
       const info = bblInfo.get(bbl)!;
       const enriched = enrichment.get(bbl);
-      const live = liveCounts.get(bbl);
+      const live = liveData.get(bbl);
       return {
         bbl,
         address: info.address,
@@ -309,7 +377,7 @@ export async function GET(request: NextRequest) {
         has_cached_data: cachedSet.has(bbl),
         open_violations: enriched ? enriched.open_violations : live ? live.open_violations : null,
         complaints: enriched ? enriched.complaints : live ? live.complaints : null,
-        habitable_score: enriched ? enriched.habitable_score : null,
+        habitable_score: enriched ? enriched.habitable_score : live ? live.habitable_score : null,
       };
     };
 

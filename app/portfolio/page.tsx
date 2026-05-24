@@ -28,21 +28,26 @@ interface PortfolioResponse {
   total_buildings: number;
 }
 
-function ScoreDot({ score }: { score: HabitableScore | null }) {
+function scoreCategory(score: HabitableScore | null): "green" | "amber" | "red" | null {
   if (!score) return null;
-  let color: string | null = null;
-  if (score.type === "clean") {
-    color = "var(--signal-green)";
-  } else if (score.type === "score") {
-    color =
-      score.accentColor === "green"
-        ? "var(--signal-green)"
-        : score.accentColor === "amber"
-          ? "var(--signal-amber)"
-          : "var(--signal-red)";
-  }
-  if (!color) return null;
+  if (score.type === "clean") return "green";
+  if (score.type === "score") return score.accentColor ?? null;
+  return null; // no_score (missing unit count or active AEP)
+}
+
+function ScoreDot({ score }: { score: HabitableScore | null }) {
+  const category = scoreCategory(score);
+  if (!category) return null;
+  const color =
+    category === "green" ? "var(--signal-green)" : category === "amber" ? "var(--signal-amber)" : "var(--signal-red)";
   return <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color }} aria-hidden />;
+}
+
+function joinList(parts: string[]): string {
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
 }
 
 function BuildingCard({ b, selfManaged }: { b: BuildingEntry; selfManaged?: boolean }) {
@@ -172,7 +177,7 @@ function PortfolioContent() {
     <div className="min-h-screen flex flex-col font-[family-name:var(--font-ui)]">
       <header className="border-b border-[var(--hab-line)] bg-[var(--hab-paper)]">
         <div className="mx-auto max-w-2xl px-5 py-4">
-          <Link href="/" className="text-[11px] font-[family-name:var(--font-mono)] uppercase tracking-[0.08em] text-[var(--hab-muted)] hover:text-[var(--hab-ink)]">
+          <Link href="/" className="text-lg font-[family-name:var(--font-serif)] font-semibold tracking-tight text-[var(--hab-ink)]">
             Habitable
           </Link>
         </div>
@@ -225,16 +230,46 @@ function PortfolioContent() {
           }
           const allBuildings = Array.from(uniqueBuildings.values());
           const withData = allBuildings.filter((b) => b.open_violations !== null);
-          const withViolations = withData.filter((b) => (b.open_violations ?? 0) > 0);
           const totalOpenViolations = withData.reduce((s, b) => s + (b.open_violations ?? 0), 0);
           const totalComplaints = withData.reduce((s, b) => s + (b.complaints ?? 0), 0);
 
-          const nBuildings = withData.length;
-          const buildingWord = nBuildings === 1 ? "building" : "buildings";
-          const assessmentLine =
-            withViolations.length === 0
-              ? `None of the ${nBuildings} ${buildingWord} in this portfolio have open violations in the last 2 years.`
-              : `Of ${nBuildings} ${buildingWord} in this portfolio, ${withViolations.length} ${withViolations.length === 1 ? "has" : "have"} open violations (${totalOpenViolations} total). Tenants have filed ${totalComplaints} complaint${totalComplaints === 1 ? "" : "s"} in the last 2 years.`;
+          // Count buildings by score-based dot color (same thresholds as property page).
+          let green = 0;
+          let amber = 0;
+          let red = 0;
+          for (const b of allBuildings) {
+            const cat = scoreCategory(b.habitable_score);
+            if (cat === "green") green += 1;
+            else if (cat === "amber") amber += 1;
+            else if (cat === "red") red += 1;
+          }
+          const scored = green + amber + red;
+
+          const scopeWord =
+            managerBuildings.length === 0 ? "they own" : ownerBuildings.length === 0 ? "they manage" : "in this portfolio";
+          const scopeTotal = allBuildings.length;
+          const buildingWord = scopeTotal === 1 ? "building" : "buildings";
+          const scope = `${scopeTotal} ${buildingWord} ${scopeWord}`;
+          const complaintSentence =
+            totalComplaints > 0
+              ? ` Tenants have filed ${totalComplaints} complaint${totalComplaints === 1 ? "" : "s"} in the last 2 years.`
+              : "";
+
+          let assessmentLine: string;
+          if (scored === 0) {
+            assessmentLine =
+              totalOpenViolations === 0
+                ? `None of the ${scope} have open violations in the last 2 years.`
+                : `The ${scope} have ${totalOpenViolations} open violation${totalOpenViolations === 1 ? "" : "s"} in the last 2 years.${complaintSentence}`;
+          } else if (amber === 0 && red === 0 && totalOpenViolations === 0) {
+            assessmentLine = `All ${scope} score above average for similar-sized NYC buildings, with no open violations in the last 2 years.`;
+          } else {
+            const parts: string[] = [];
+            if (green > 0) parts.push(`${green} score above average`);
+            if (amber > 0) parts.push(`${amber} ${amber === 1 ? "is" : "are"} moderate`);
+            if (red > 0) parts.push(`${red} ${red === 1 ? "is" : "are"} below average`);
+            assessmentLine = `Of ${scope}, ${joinList(parts)} for similar-sized NYC buildings.${complaintSentence}`;
+          }
 
           const missingData = allBuildings.length - withData.length;
 
