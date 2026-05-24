@@ -339,6 +339,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
   const [timeframe, setTimeframe] = useState<"recent" | "all">("recent");
   const [activeTab, setActiveTab] = useState<"violations" | "complaints" | "litigation" | "311">("violations");
   const [pageView, setPageView] = useState<"summary" | "full">(tabParam === "full" ? "full" : "summary");
+  const [showAllContacts, setShowAllContacts] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -364,11 +365,6 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bbl]);
 
-  // Owner portfolio — live lookup
-  interface PortfolioBuilding { bbl: string; address: string }
-  const [portfolio, setPortfolio] = useState<PortfolioBuilding[]>([]);
-  const [portfolioLoading, setPortfolioLoading] = useState(false);
-
   // ACRIS ownership history
   interface DeedRecord { buyer: string; seller: string; date: string; amount: number }
   const [deeds, setDeeds] = useState<DeedRecord[]>([]);
@@ -379,60 +375,6 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
   interface LinkedProperty { bbl: string; address: string; date: string; confirmed: boolean }
   const [linkedProperties, setLinkedProperties] = useState<LinkedProperty[]>([]);
   const [linkedName, setLinkedName] = useState("");
-
-  useEffect(() => {
-    if (!propertyData) return;
-    const ownerName = (propertyData.registration_contacts ?? []).find((c) => c.type === "CorporateOwner")?.corporation_name;
-    if (!ownerName) return;
-    // Skip portfolio lookup for condo/co-op buildings
-    if (buildingType === "Co-op" || buildingType === "Condo" || buildingType === "Condo / co-op") return;
-
-    async function loadPortfolio() {
-      setPortfolioLoading(true);
-      try {
-        // Find all registrations with same corporate owner
-        const contactsRes = await fetch(
-          `https://data.cityofnewyork.us/resource/feu5-w2e2.json?corporationname=${encodeURIComponent(ownerName!)}&type=CorporateOwner&$limit=100`
-        );
-        if (!contactsRes.ok) return;
-        const contacts: { registrationid?: string }[] = await contactsRes.json();
-
-        // Get current building's registration ID
-        const currentRegId = propertyData!.building_details?.registration_id;
-        const allRegIds = contacts.map((c) => c.registrationid).filter((id): id is string => !!id);
-        const otherRegIds = Array.from(new Set(allRegIds)).filter((id) => id !== currentRegId);
-
-        if (otherRegIds.length === 0) { setPortfolio([]); return; }
-
-        // Look up building addresses for those registration IDs
-        const where = otherRegIds.map((id) => `registrationid='${id}'`).join(" OR ");
-        const regRes = await fetch(
-          `https://data.cityofnewyork.us/resource/tesw-yqqr.json?$where=${encodeURIComponent(where)}&$select=registrationid,boroid,housenumber,streetname,block,lot&$limit=100`
-        );
-        if (!regRes.ok) return;
-        const regs: { boroid?: string; housenumber?: string; streetname?: string; block?: string; lot?: string }[] = await regRes.json();
-
-        const buildings: PortfolioBuilding[] = regs
-          .filter((r) => r.boroid && r.block && r.lot)
-          .map((r) => {
-            const regBbl = `${r.boroid}${String(r.block).padStart(5, "0")}${String(r.lot).padStart(4, "0")}`;
-            const boro = ["", "Manhattan", "Bronx", "Brooklyn", "Queens", "Staten Island"][parseInt(r.boroid!) || 0] || "";
-            return { bbl: regBbl, address: `${r.housenumber} ${r.streetname}, ${boro}` };
-          })
-          .filter((b) => b.bbl !== bbl);
-
-        // Deduplicate by BBL
-        const seen = new Set<string>();
-        setPortfolio(buildings.filter((b) => { if (seen.has(b.bbl)) return false; seen.add(b.bbl); return true; }));
-      } catch {
-        // Silently fail — portfolio is a nice-to-have
-      } finally {
-        setPortfolioLoading(false);
-      }
-    }
-    loadPortfolio();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [propertyData, bbl]);
 
   // ACRIS deed lookup — async, doesn't block page render
   useEffect(() => {
@@ -766,6 +708,26 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
     return sorted[0]?.respondent || null;
   }, [propertyData]);
 
+  // Secondary contacts (Head Officer, Site Manager) only matter when they are
+  // a distinct person/entity from the Owner or Agent — otherwise they're redundant.
+  type ContactLike = { first_name: string | null; last_name: string | null; corporation_name?: string | null } | null | undefined;
+  const contactNameKey = (c: ContactLike) => [c?.first_name, c?.last_name].filter(Boolean).join(" ").trim().toUpperCase();
+  const primaryContactNames = new Set(
+    [
+      contactNameKey(contacts.owner),
+      contactNameKey(contacts.agent),
+      (contacts.owner?.corporation_name || "").trim().toUpperCase(),
+      (contacts.agent?.corporation_name || "").trim().toUpperCase(),
+    ].filter(Boolean)
+  );
+  const isDistinctContact = (c: ContactLike) => {
+    const key = contactNameKey(c);
+    return key.length > 0 && !primaryContactNames.has(key);
+  };
+  const showHeadOfficer = isDistinctContact(contacts.headOfficer);
+  const showSiteManager = isDistinctContact(contacts.siteManager);
+  const hasExtraContacts = showHeadOfficer || showSiteManager;
+
   // ─── Render ───────────────────────────────────────
 
   return (
@@ -1012,18 +974,6 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                       </span>
                     </div>
                   )}
-                  {contacts.headOfficer && (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Head Officer</span>
-                      <span className="text-sm text-[var(--foreground)]">{[contacts.headOfficer.first_name, contacts.headOfficer.last_name].filter(Boolean).join(" ")}</span>
-                    </div>
-                  )}
-                  {contacts.siteManager && contacts.siteManager.last_name !== contacts.agent?.last_name && (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Site Manager</span>
-                      <span className="text-sm text-[var(--foreground)]">{[contacts.siteManager.first_name, contacts.siteManager.last_name].filter(Boolean).join(" ")}</span>
-                    </div>
-                  )}
                   {ownerInfo && !contacts.owner && (
                     <div className="flex items-baseline gap-2">
                       <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Owner</span>
@@ -1033,6 +983,29 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                   {ownerInfo && contacts.owner && (
                     <p className="text-[10px] text-[var(--muted-dim)] mt-1">Also named in HPD litigation: {ownerInfo}</p>
                   )}
+                  {hasExtraContacts && (
+                    <div>
+                      <button onClick={() => setShowAllContacts(!showAllContacts)} className="text-[10px] text-[var(--muted)] hover:text-[var(--foreground)]">
+                        {showAllContacts ? "Hide additional contacts" : "Show all contacts"}
+                      </button>
+                      {showAllContacts && (
+                        <div className="mt-1.5 space-y-1.5">
+                          {showHeadOfficer && (
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Head Officer</span>
+                              <span className="text-sm text-[var(--foreground)]">{[contacts.headOfficer?.first_name, contacts.headOfficer?.last_name].filter(Boolean).join(" ")}</span>
+                            </div>
+                          )}
+                          {showSiteManager && (
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Site Manager</span>
+                              <span className="text-sm text-[var(--foreground)]">{[contacts.siteManager?.first_name, contacts.siteManager?.last_name].filter(Boolean).join(" ")}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
               {contacts.owner && contacts.agent && (
@@ -1040,34 +1013,10 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                   Owner is the registered building owner. Agent is the company or person hired to manage the building.
                 </p>
               )}
-              {(() => {
-                const ownerName = contacts.owner?.corporation_name;
-                if (!ownerName) return null;
-                if (buildingType === "Co-op" || buildingType === "Condo" || buildingType === "Condo / co-op") {
-                  return <p className="text-xs text-[var(--muted)]">This is a {buildingType.toLowerCase()} building. {ownerName} is the homeowners association. Individual units are owned separately.</p>;
-                }
-                if (portfolioLoading) return <p className="text-xs text-[var(--muted-dim)]">Looking up owner portfolio...</p>;
-                if (portfolio.length === 0) return <p className="text-xs text-[var(--muted)]">No other buildings registered under {ownerName}.</p>;
-                return (
-                  <div>
-                    <p className="text-xs text-[var(--muted)] mb-2">{ownerName} also operates {portfolio.length} other building{portfolio.length === 1 ? "" : "s"}:</p>
-                    <div className="space-y-1">
-                      {portfolio.slice(0, 10).map((b) => (
-                        <div key={b.bbl} className="flex items-center justify-between">
-                          <Link href={`/property/${b.bbl}?address=${encodeURIComponent(b.address)}`} className="text-xs text-[var(--foreground)] hover:underline truncate">{b.address}</Link>
-                          <span className="text-[10px] text-[var(--muted-dim)] ml-2 shrink-0 font-[family-name:var(--font-mono)]">{b.bbl}</span>
-                        </div>
-                      ))}
-                      {portfolio.length > 10 && <p className="text-[10px] text-[var(--muted-dim)]">...and {portfolio.length - 10} more</p>}
-                    </div>
-                  </div>
-                );
-              })()}
-
               {/* ACRIS LLC Linking */}
               {linkedProperties.length > 0 && linkedName && (
                 <div>
-                  <h4 className="text-xs font-semibold text-[var(--muted-dim)] uppercase tracking-wide mb-1">Other properties linked to {linkedName}</h4>
+                  <h4 className="text-xs font-semibold text-[var(--muted-dim)] uppercase tracking-wide mb-1">Properties linked to {linkedName} through deed records</h4>
                   <p className="text-[11px] text-[var(--hab-muted)] mb-2 font-[family-name:var(--font-ui)]">Based on property sale and transfer records (ACRIS)</p>
                   <p className="text-xs text-[var(--muted)] mb-2">{linkedName} is also linked to {linkedProperties.length} other property transaction{linkedProperties.length === 1 ? "" : "s"}:</p>
                   <div className="space-y-1">

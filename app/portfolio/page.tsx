@@ -149,11 +149,14 @@ function PortfolioContent() {
   const total = data?.total_buildings ?? 0;
   const hasResults = total > 0;
 
+  const HOA_INDICATORS = ["HOA", "HOMEOWNER", "CONDOMINIUM", "CONDO ASSOC", "OWNERS CORP"];
+  const isLikelyHOA = HOA_INDICATORS.some((k) => name.toUpperCase().includes(k));
+
   return (
     <div className="min-h-screen flex flex-col font-[family-name:var(--font-ui)]">
       <header className="border-b border-[var(--hab-line)] bg-[var(--hab-paper)]">
         <div className="mx-auto max-w-2xl px-5 py-4">
-          <Link href="/" className="text-lg font-[family-name:var(--font-serif)] font-semibold tracking-tight text-[var(--hab-ink)]">
+          <Link href="/" className="text-[11px] font-[family-name:var(--font-mono)] uppercase tracking-[0.08em] text-[var(--hab-muted)] hover:text-[var(--hab-ink)]">
             Habitable
           </Link>
         </div>
@@ -163,6 +166,11 @@ function PortfolioContent() {
         <h1 className="text-2xl font-[family-name:var(--font-serif)] font-semibold text-[var(--hab-ink)] leading-tight break-words">
           {name || "Portfolio"}
         </h1>
+        {isLikelyHOA && (
+          <p className="text-xs text-[var(--hab-muted)] mt-2 leading-relaxed">
+            This appears to be a homeowners association. Individual units in this building may be separately owned.
+          </p>
+        )}
 
         {loading && (
           <>

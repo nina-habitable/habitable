@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
-import { isOpenViolation } from "../../../lib/violation-filters";
+import { isOpenViolation, isRecent } from "../../../lib/violation-filters";
 import { calculateHabitableScore, type HabitableScoreResult } from "../../../lib/habitable-score";
 import type { PropertyResponse } from "../../../lib/property-types";
 
@@ -94,9 +94,15 @@ async function enrichBuilding(bbl: string): Promise<{
     supabaseAdmin.from("aep_status").select("current_status").eq("bbl", bbl),
   ]);
 
-  const openViolations = violations.filter((v) => isOpenViolation(v.status as string | null)).length;
+  // Count only the last 2 years, matching the property page's default view.
+  const openViolations = violations.filter(
+    (v) => isOpenViolation(v.status as string | null) && isRecent(v.inspectiondate as string | null)
+  ).length;
   const complaintCount = new Set(
-    complaints.map((c) => c.complaint_id).filter(Boolean)
+    complaints
+      .filter((c) => isRecent(c.received_date as string | null))
+      .map((c) => c.complaint_id)
+      .filter(Boolean)
   ).size;
 
   // Build a minimal PropertyResponse so we can reuse the canonical scoring logic.
