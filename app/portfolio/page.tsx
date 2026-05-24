@@ -275,10 +275,11 @@ function PortfolioContent() {
           } else if (amber === 0 && red === 0 && totalOpenViolations === 0) {
             assessmentLine = `All ${scope} score above average for similar-sized NYC buildings, with no open violations in the last 2 years.`;
           } else {
+            const pct = (count: number) => Math.round((count / scopeTotal) * 100);
             const parts: string[] = [];
-            if (green > 0) parts.push(`${green} score above average`);
-            if (amber > 0) parts.push(`${amber} ${amber === 1 ? "is" : "are"} moderate`);
-            if (red > 0) parts.push(`${red} ${red === 1 ? "is" : "are"} below average`);
+            if (green > 0) parts.push(`${green} (${pct(green)}%) score above average`);
+            if (amber > 0) parts.push(`${amber} (${pct(amber)}%) ${amber === 1 ? "is" : "are"} moderate`);
+            if (red > 0) parts.push(`${red} (${pct(red)}%) ${red === 1 ? "is" : "are"} below average`);
             assessmentLine = `Of ${scope}, ${joinList(parts)} for similar-sized NYC buildings.${complaintSentence}`;
           }
 
