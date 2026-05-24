@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
-import { isOpenViolation, isRecent } from "../../../lib/violation-filters";
+import { isOpenViolation, isRecent, CLOSED_STATUSES, TWO_YEARS_MS } from "../../../lib/violation-filters";
 import { calculateHabitableScore, type HabitableScoreResult } from "../../../lib/habitable-score";
 import type { PropertyResponse } from "../../../lib/property-types";
 
@@ -21,6 +21,8 @@ const TESW_CHUNK = 100;
 const PROPERTIES_IN_CHUNK = 200;
 const MAX_ENRICHED_BUILDINGS = 120;
 const ENRICH_CONCURRENCY = 8;
+const MAX_LIVE_FETCH = 20;
+const LIVE_FETCH_TIMEOUT_MS = 5000;
 
 interface BuildingEntry {
   bbl: string;
@@ -119,6 +121,45 @@ async function enrichBuilding(bbl: string): Promise<{
   const habitableScore = calculateHabitableScore(pseudoProperty, "recent");
 
   return { open_violations: openViolations, complaints: complaintCount, habitable_score: habitableScore };
+}
+
+// Lightweight live counts (open violations + complaints, last 2 years) straight
+// from the HPD APIs for buildings we have not cached. Aggregate count queries
+// keep this cheap. Not written back to Supabase.
+async function fetchLiveCounts(
+  bbl: string,
+  tokenParam: string
+): Promise<{ open_violations: number; complaints: number }> {
+  const cutoff = `${new Date(Date.now() - TWO_YEARS_MS).toISOString().slice(0, 10)}T00:00:00`;
+  const closedIn = CLOSED_STATUSES.map((s) => `'${s.replace(/'/g, "''")}'`).join(",");
+
+  const vWhere = `bbl='${bbl}' AND inspectiondate>='${cutoff}' AND (currentstatus IS NULL OR upper(currentstatus) not in (${closedIn}))`;
+  const vUrl =
+    `https://data.cityofnewyork.us/resource/wvxf-dwi5.json` +
+    `?$select=count(*) as n&$where=${encodeURIComponent(vWhere)}${tokenParam}`;
+
+  const cWhere = `bbl='${bbl}' AND received_date>='${cutoff}'`;
+  const cUrl =
+    `https://data.cityofnewyork.us/resource/ygpa-z7cr.json` +
+    `?$select=count(distinct complaint_id) as n&$where=${encodeURIComponent(cWhere)}${tokenParam}`;
+
+  const fetchCount = async (url: string): Promise<number | null> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), LIVE_FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) return null;
+      const json = (await res.json()) as { n?: string }[];
+      return parseInt(json?.[0]?.n ?? "0", 10) || 0;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  const [violations, complaints] = await Promise.all([fetchCount(vUrl), fetchCount(cUrl)]);
+  return { open_violations: violations ?? 0, complaints: complaints ?? 0 };
 }
 
 function emptyResponse(name: string) {
@@ -240,18 +281,34 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    // For uncached buildings, fetch lightweight live counts straight from HPD
+    // (capped). These are not written back to Supabase.
+    const uncachedBbls = allBbls.filter((b) => !cachedSet.has(b));
+    const liveBbls = uncachedBbls.slice(0, MAX_LIVE_FETCH);
+    const liveCounts = new Map<string, { open_violations: number; complaints: number }>();
+    await Promise.all(
+      liveBbls.map(async (bbl) => {
+        try {
+          liveCounts.set(bbl, await fetchLiveCounts(bbl, tokenParam));
+        } catch (error) {
+          console.error(`Portfolio live-count error for ${bbl}:`, error);
+        }
+      })
+    );
+
     // D) Build the grouped response.
     const buildEntry = (bbl: string): BuildingEntry => {
       const info = bblInfo.get(bbl)!;
       const enriched = enrichment.get(bbl);
+      const live = liveCounts.get(bbl);
       return {
         bbl,
         address: info.address,
         borough: info.borough,
         zip: info.zip,
         has_cached_data: cachedSet.has(bbl),
-        open_violations: enriched ? enriched.open_violations : null,
-        complaints: enriched ? enriched.complaints : null,
+        open_violations: enriched ? enriched.open_violations : live ? live.open_violations : null,
+        complaints: enriched ? enriched.complaints : live ? live.complaints : null,
         habitable_score: enriched ? enriched.habitable_score : null,
       };
     };
