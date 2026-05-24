@@ -1,6 +1,7 @@
 "use client";
 
 import type { PropertyResponse } from "../../lib/property-types";
+import EntityLink from "./EntityLink";
 
 function formatDate(dateStr: string | null) {
   if (!dateStr) return "N/A";
@@ -234,7 +235,7 @@ export default function PropertySummary({
         </p>
         {ownerName || deeds.length > 0 ? (
           <p className="text-sm font-[family-name:var(--font-serif)] text-[var(--hab-ink)] leading-relaxed">
-            {ownerName && <>Owned by <strong>{ownerName}</strong></>}
+            {ownerName && <>Owned by <strong>{contacts.owner?.corporation_name ? <EntityLink name={contacts.owner.corporation_name} /> : ownerName}</strong></>}
             {ownerName && headOfficerName && <>, head officer <strong>{headOfficerName}</strong></>}
             {ownerName && deeds.length > 0 && ". "}
             {deeds.length > 0 && (

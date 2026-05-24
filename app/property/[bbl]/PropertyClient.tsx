@@ -7,6 +7,7 @@ import AddressAutocomplete from "../../components/AddressAutocomplete";
 import FuzzyMatchBanner from "../../components/FuzzyMatchBanner";
 import { detectFuzzyMatchFromLabel } from "../../../lib/address-matching";
 import PropertySummary from "../../components/PropertySummary";
+import EntityLink from "../../components/EntityLink";
 import {
   mapViolation,
   CLASS_INFO,
@@ -999,7 +1000,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                   {contacts.owner && (
                     <div className="flex items-baseline gap-2">
                       <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Owner</span>
-                      <span className="text-sm text-[var(--foreground)]">{contacts.owner.corporation_name || [contacts.owner.first_name, contacts.owner.last_name].filter(Boolean).join(" ")}</span>
+                      <span className="text-sm text-[var(--foreground)]">{contacts.owner.corporation_name ? <EntityLink name={contacts.owner.corporation_name} /> : [contacts.owner.first_name, contacts.owner.last_name].filter(Boolean).join(" ")}</span>
                     </div>
                   )}
                   {contacts.agent && (
@@ -1007,7 +1008,7 @@ export default function PropertyContent({ bbl }: { bbl: string }) {
                       <span className="text-[10px] text-[var(--muted-dim)] w-20 shrink-0">Agent</span>
                       <span className="text-sm text-[var(--foreground)]">
                         {[contacts.agent.first_name, contacts.agent.last_name].filter(Boolean).join(" ")}
-                        {contacts.agent.corporation_name && <span className="text-[var(--muted)]">, {contacts.agent.corporation_name}</span>}
+                        {contacts.agent.corporation_name && <span className="text-[var(--muted)]">, <EntityLink name={contacts.agent.corporation_name} /></span>}
                       </span>
                     </div>
                   )}
