@@ -19,6 +19,7 @@ interface BuildingEntry {
   open_violations: number | null;
   complaints: number | null;
   habitable_score: HabitableScore | null;
+  aep_active?: boolean;
 }
 
 interface PortfolioResponse {
@@ -35,8 +36,18 @@ function scoreCategory(score: HabitableScore | null): "green" | "amber" | "red" 
   return null; // no_score (missing unit count or active AEP)
 }
 
-function ScoreDot({ score }: { score: HabitableScore | null }) {
-  const category = scoreCategory(score);
+// The dot the portfolio page shows. AEP overrides everything to red. When the
+// score is unavailable we still indicate health from the violation count, so
+// every building with data gets a dot.
+function dotCategory(b: BuildingEntry): "green" | "amber" | "red" | null {
+  if (b.aep_active) return "red";
+  const cat = scoreCategory(b.habitable_score);
+  if (cat) return cat;
+  if (b.open_violations === null) return null; // no data at all
+  return b.open_violations > 0 ? "red" : "green";
+}
+
+function ScoreDot({ category }: { category: "green" | "amber" | "red" | null }) {
   if (!category) return null;
   const color =
     category === "green" ? "var(--signal-green)" : category === "amber" ? "var(--signal-amber)" : "var(--signal-red)";
@@ -65,7 +76,7 @@ function BuildingCard({ b, selfManaged }: { b: BuildingEntry; selfManaged?: bool
           </p>
           <p className="text-[10px] font-[family-name:var(--font-mono)] text-[var(--hab-muted)] mt-0.5">BBL {b.bbl}</p>
         </div>
-        <ScoreDot score={b.habitable_score} />
+        <ScoreDot category={dotCategory(b)} />
       </div>
 
       {hasData ? (
@@ -238,7 +249,7 @@ function PortfolioContent() {
           let amber = 0;
           let red = 0;
           for (const b of allBuildings) {
-            const cat = scoreCategory(b.habitable_score);
+            const cat = dotCategory(b);
             if (cat === "green") green += 1;
             else if (cat === "amber") amber += 1;
             else if (cat === "red") red += 1;

@@ -34,6 +34,7 @@ interface BuildingEntry {
   open_violations: number | null;
   complaints: number | null;
   habitable_score: HabitableScoreResult | null;
+  aep_active: boolean;
 }
 
 function classifyRole(type: string | null | undefined): "owner" | "manager" | null {
@@ -87,6 +88,7 @@ async function enrichBuilding(bbl: string): Promise<{
   open_violations: number;
   complaints: number;
   habitable_score: HabitableScoreResult;
+  aep_active: boolean;
 }> {
   const [violations, complaints, litigations, bedbugs, buildingDetails, aep] = await Promise.all([
     readColsByBbl("violations", bbl, "class,status,inspectiondate"),
@@ -120,8 +122,9 @@ async function enrichBuilding(bbl: string): Promise<{
   } as unknown as PropertyResponse;
 
   const habitableScore = calculateHabitableScore(pseudoProperty, "recent");
+  const aepActive = (aep.data ?? []).some((a: { current_status?: string }) => a.current_status === "AEP Active");
 
-  return { open_violations: openViolations, complaints: complaintCount, habitable_score: habitableScore };
+  return { open_violations: openViolations, complaints: complaintCount, habitable_score: habitableScore, aep_active: aepActive };
 }
 
 async function fetchJson(url: string): Promise<Record<string, string>[]> {
@@ -337,7 +340,7 @@ export async function GET(request: NextRequest) {
 
     // Enrich cached buildings with counts and score (bounded for performance).
     const cachedBbls = allBbls.filter((b) => cachedSet.has(b)).slice(0, MAX_ENRICHED_BUILDINGS);
-    const enrichment = new Map<string, { open_violations: number; complaints: number; habitable_score: HabitableScoreResult }>();
+    const enrichment = new Map<string, { open_violations: number; complaints: number; habitable_score: HabitableScoreResult; aep_active: boolean }>();
     await mapWithConcurrency(cachedBbls, ENRICH_CONCURRENCY, async (bbl) => {
       try {
         enrichment.set(bbl, await enrichBuilding(bbl));
@@ -378,6 +381,7 @@ export async function GET(request: NextRequest) {
         open_violations: enriched ? enriched.open_violations : live ? live.open_violations : null,
         complaints: enriched ? enriched.complaints : live ? live.complaints : null,
         habitable_score: enriched ? enriched.habitable_score : live ? live.habitable_score : null,
+        aep_active: enriched ? enriched.aep_active : false,
       };
     };
 
