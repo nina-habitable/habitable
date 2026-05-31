@@ -24,6 +24,7 @@ interface Props {
   contacts: {
     owner?: { corporation_name: string | null; first_name: string | null; last_name: string | null } | null;
     headOfficer?: { first_name: string | null; last_name: string | null } | null;
+    agent?: { corporation_name: string | null; first_name: string | null; last_name: string | null } | null;
   };
 }
 
@@ -76,6 +77,13 @@ export default function PropertySummary({
   const headOfficerName = contacts.headOfficer
     ? [contacts.headOfficer.first_name, contacts.headOfficer.last_name].filter(Boolean).join(" ")
     : null;
+
+  // Ownership / management linkout decision
+  const ownerCorp = contacts.owner?.corporation_name ?? null;
+  const agentCorp = contacts.agent?.corporation_name ?? null;
+  const hasSeparateManager = agentCorp != null && agentCorp !== ownerCorp;
+  const isSelfManaged = !hasSeparateManager && agentCorp != null && agentCorp === ownerCorp;
+  const ownerCtaLabel = hasSeparateManager ? "View owner portfolio →" : "View portfolio →";
 
   const metaParts = [
     neighbourhood || null,
@@ -234,16 +242,16 @@ export default function PropertySummary({
         </div>
       )}
 
-      {/* 7. SECTION: Ownership */}
+      {/* 7. SECTION: Ownership and Management */}
       <div className="mb-8 mt-10">
         <div className="border-t border-[#e8e2d9] pt-4">
           <p className="text-xs font-[family-name:var(--font-mono)] uppercase tracking-[0.06em] text-[#5a4f42] font-semibold mb-3 pl-3.5 border-l-[3px] border-[#8b2500]">
-            &sect; {ownershipNum} &mdash; Ownership
+            &sect; {ownershipNum} &mdash; Ownership and Management
           </p>
         </div>
         {ownerName || deeds.length > 0 ? (
           <p className="text-sm font-[family-name:var(--font-serif)] text-[var(--hab-ink)] leading-relaxed">
-            {ownerName && <>Owned by <strong>{contacts.owner?.corporation_name ? <EntityLink name={contacts.owner.corporation_name} /> : ownerName}</strong></>}
+            {ownerName && <>Owned by <strong>{ownerCorp || ownerName}</strong></>}
             {ownerName && headOfficerName && <>, head officer <strong>{headOfficerName}</strong></>}
             {ownerName && deeds.length > 0 && ". "}
             {deeds.length > 0 && (
@@ -261,6 +269,26 @@ export default function PropertySummary({
           </p>
         ) : (
           <p className="text-sm text-[var(--hab-muted)]">Ownership data not available.</p>
+        )}
+        {ownerCorp && (
+          <p className="text-xs mt-2">
+            <EntityLink name={ownerCorp} label={ownerCtaLabel} />
+          </p>
+        )}
+        {hasSeparateManager && agentCorp && (
+          <>
+            <p className="text-sm font-[family-name:var(--font-serif)] text-[var(--hab-ink)] leading-relaxed mt-3">
+              Managed by <strong>{agentCorp}</strong>.
+            </p>
+            <p className="text-xs mt-1">
+              <EntityLink name={agentCorp} label="View management portfolio →" />
+            </p>
+          </>
+        )}
+        {isSelfManaged && (
+          <p className="text-xs text-[var(--hab-muted)] mt-2">
+            This building is self-managed by the owner.
+          </p>
         )}
       </div>
 
